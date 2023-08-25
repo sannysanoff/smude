@@ -143,4 +143,7 @@ class SegModel(pl.LightningModule):
 
 
 def load_model(checkpoint_path: str) -> pl.LightningModule:
-    return SegModel.load_from_checkpoint(checkpoint_path)
+    return SegModel.load_from_checkpoint(
+        checkpoint_path, map_location=torch.device('cpu')
+    )
+
