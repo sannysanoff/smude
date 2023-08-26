@@ -624,6 +624,8 @@ def generate_mesh(num_latitudes: int, num_longitudes: int, longitudes: List[Call
 
     return cols, rows
 
+def to_numpy_1d(arr):
+    return np.array(arr).flatten()
 
 def mrcdi(input_img: np.ndarray, barlines_img: np.ndarray, upper_img: np.ndarray, lower_img: np.ndarray, background_img: np.ndarray, original_img: np.ndarray, optimize_f: bool = False) -> np.ndarray:
     """
@@ -717,7 +719,12 @@ def mrcdi(input_img: np.ndarray, barlines_img: np.ndarray, upper_img: np.ndarray
     # mu_bottom = fsolve(lambda mu: min([get_latitude_parametric(mu)(t)[1] for t in np.linspace(0, 1, 20)]) - h, 0)[0]
 
     # Another approach, needs testing
-    t_max_dist = minimize(lambda t: euclidean(top_parametric(t), bottom_parametric(t)), 0.5, bounds=[(0, 1)]).x[0]
+    # Before the minimize call
+    print("Shape of top_parametric:", np.shape(top_parametric(0.5)))
+    print("Shape of bottom_parametric:", np.shape(bottom_parametric(0.5)))
+
+    # Now the minimize call
+    t_max_dist = minimize(lambda t: euclidean(to_numpy_1d(top_parametric(t)), to_numpy_1d(bottom_parametric(t))), 0.5, bounds=[(0, 1)]).x[0]
     mu_top = fsolve(lambda mu: get_latitude_parametric(mu)(t_max_dist)[1], 1)[0]
     mu_bottom = fsolve(lambda mu: get_latitude_parametric(mu)(t_max_dist)[1] - h, 0)[0]
 

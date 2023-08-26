@@ -40,4 +40,4 @@ def binarize(image: np.ndarray, holes_threshold: float = 20) -> np.ndarray:
     binary_sauvola = flood_fill(binary_sauvola, (0, 0), 0)
     binary_sauvola = flood_fill(binary_sauvola, (0, 0), 1)
 
-    return binary_sauvola.astype(np.bool)
+    return binary_sauvola.astype(bool)
