@@ -11,15 +11,96 @@ import numpy as np
 
 
 def replace_black_filter(image):
-    """Replace absolute black pixels (0) with white (255)."""
+    """Replace absolute black pixels (0) with most dominant color in surrounding area."""
     # Create mask for pixels that are exactly 0
-    mask = (image == 0)
+    if len(image.shape) == 3:
+        # Color image - check if all channels are 0
+        black_mask = np.all(image == 0, axis=2)
+    else:
+        # Grayscale image
+        black_mask = (image == 0)
     
-    # Replace 0 values with 255
+    if not np.any(black_mask):
+        return image  # No black pixels found
+    
     result = image.copy()
-    result[mask] = 255
+    height, width = image.shape[:2]
+    
+    # Get coordinates of black pixels
+    black_coords = np.where(black_mask)
+    
+    # Process each black pixel
+    for i in range(len(black_coords[0])):
+        y, x = black_coords[0][i], black_coords[1][i]
+        
+        # Find replacement color using expanding radius
+        replacement_color = find_dominant_color_around_pixel(image, x, y, height, width)
+        
+        # Replace the black pixel
+        result[y, x] = replacement_color
     
     return result
+
+
+def find_dominant_color_around_pixel(image, x, y, height, width):
+    """Find the most dominant non-black color around a pixel using expanding radius."""
+    radius = 50  # Start with 50px radius
+    
+    while radius <= min(height, width):
+        # Define square block bounds
+        y_min = max(0, y - radius)
+        y_max = min(height, y + radius + 1)
+        x_min = max(0, x - radius)
+        x_max = min(width, x + radius + 1)
+        
+        # Extract the region
+        region = image[y_min:y_max, x_min:x_max]
+        
+        # Count non-black pixels
+        if len(image.shape) == 3:
+            non_black_mask = ~np.all(region == 0, axis=2)
+        else:
+            non_black_mask = region != 0
+        
+        total_pixels = region.shape[0] * region.shape[1]
+        non_black_pixels = np.sum(non_black_mask)
+        
+        # Check if we have at least 50% non-black pixels
+        if non_black_pixels >= total_pixels * 0.5:
+            # Find most dominant color (excluding black)
+            return get_dominant_color(region, non_black_mask)
+        
+        # Expand radius by 50px
+        radius += 50
+    
+    # Fallback: return white if no suitable area found
+    if len(image.shape) == 3:
+        return [255, 255, 255]
+    else:
+        return 255
+
+
+def get_dominant_color(region, non_black_mask):
+    """Get the most dominant color from a region, excluding black pixels."""
+    if len(region.shape) == 3:
+        # Color image
+        non_black_pixels = region[non_black_mask]
+        if len(non_black_pixels) == 0:
+            return [255, 255, 255]  # Fallback to white
+        
+        # Use average color as approximation of dominant color
+        # For true dominant color, we'd need histogram analysis which is more complex
+        dominant_color = np.mean(non_black_pixels, axis=0).astype(np.uint8)
+        return dominant_color
+    else:
+        # Grayscale image
+        non_black_pixels = region[non_black_mask]
+        if len(non_black_pixels) == 0:
+            return 255  # Fallback to white
+        
+        # Use average value
+        dominant_color = np.mean(non_black_pixels).astype(np.uint8)
+        return dominant_color
 
 
 def apply_filter(image, filter_name, **kwargs):
@@ -44,13 +125,14 @@ def main():
     # Filter options (mutually exclusive)
     filter_group = parser.add_mutually_exclusive_group(required=True)
     filter_group.add_argument('--replace-black', action='store_true',
-                              help='Replace absolute black pixels (0) with white (255)')
+                              help='Replace absolute black pixels (0) with most dominant color in surrounding area')
     
     # Add help for filters
     parser.epilog = """
 Available Filters:
-  --replace-black    Replace absolute black pixels (0) with white (255)
-                     No additional parameters required.
+  --replace-black    Replace absolute black pixels (0) with most dominant color
+                     in surrounding area. Uses expanding radius (50px steps) until
+                     at least 50% non-black pixels are found.
 
 Examples:
   python image_filter.py -i input.jpg -o output.jpg --replace-black
