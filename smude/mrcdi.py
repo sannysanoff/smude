@@ -197,6 +197,8 @@ def get_top_bottom_stafflines(stafflines: List[UnivariateSpline], left: Callable
             )
 
         if distance_left > max_dist or distance_right > max_dist:
+            min_left_seen  = min(min_left_seen  if 'min_left_seen'  in locals() else np.inf, distance_left)
+            min_right_seen = min(min_right_seen if 'min_right_seen' in locals() else np.inf, distance_right)
             continue
 
         if top is None:
@@ -207,9 +209,14 @@ def get_top_bottom_stafflines(stafflines: List[UnivariateSpline], left: Callable
         success = True
 
     if not success:
+        min_left = min_left_seen if 'min_left_seen' in locals() else np.inf
+        min_right = min_right_seen if 'min_right_seen' in locals() else np.inf
+        best_pair = min(min_left, min_right)
         logging.info(
             "No pair of staff lines satisfied the distance threshold "
-            f"(max_dist={max_dist}). Adjust 'max_dist' or check line detection."
+            f"(max_dist={max_dist}). "
+            f"Smallest distance seen: {best_pair:.2f}. "
+            "Adjust 'max_dist' or check line detection."
         )
         raise ValueError('Staff lines could not be detected!')
 
