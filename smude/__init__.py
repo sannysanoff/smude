@@ -204,8 +204,11 @@ class Smude():
 
         # Repeat mask for each RGB channel
         mask_3c = np.broadcast_to(roi_mask[..., None], roi_mask.shape + (3,))
-        # Obtain masked result image
-        result = image * mask_3c
+        # Shift non-masked pixels to 2..255 so 0 remains reserved for the mask
+        result = image.astype(np.float32)
+        result = (result / 255.0) * 253 + 2          # scale 0..255 → 2..255
+        result = result * mask_3c                    # masked pixels stay 0
+        result = result.astype(np.uint8)
 
         if self.verbose:
             self._save_verbose_image(result, 'masked_roi')
