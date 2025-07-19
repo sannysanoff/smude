@@ -66,7 +66,9 @@ def enhance_local_contrast_filter(image, radius, *, verbose=False, **kwargs):
     # Step 3: median blur
     current_step += 1
     temp = gray.copy()
-    temp[mask] = np.mean(gray[~mask]) if np.any(~mask) else 128.0
+    # Fill masked pixels with the median of the non-masked ones
+    median_val = np.median(gray[~mask]) if np.any(~mask) else 128.0
+    temp[mask] = median_val
     blurred = cv2.medianBlur(temp.astype(np.uint8), kernel_size).astype(np.float32)
     blurred[mask] = 0.0
     _save_step(blurred, f'03_blurred')
