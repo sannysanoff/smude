@@ -68,11 +68,11 @@ def enhance_local_contrast_filter(image, radius, *, verbose=False, **kwargs):
     # Step 3: median blur
     current_step += 1
     temp = gray.copy()
-    # Use image-width based kernel size but cap at 15 (max allowed by OpenCV)
-    kernel_size = min(15, max(99, int(image.shape[1] / 10)))
+    # Use image-width based kernel size but cap at 99 and min 31
+    kernel_size = min(99, max(31, int(image.shape[1] / 10)))
     if kernel_size % 2 == 0:          # ensure odd
         kernel_size += 1
-    kernel_size = min(15, kernel_size)    # final safeguard
+    kernel_size = min(99, kernel_size)    # final safeguard
     logging.info(f'Median blur kernel size: {kernel_size}')
     # Fill masked pixels with the median of the non-masked ones
     median_val = np.median(gray[~mask]) if np.any(~mask) else 128.0
