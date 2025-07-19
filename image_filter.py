@@ -524,7 +524,7 @@ Examples:
             print(f"Error: Could not save image to {args.output}")
             sys.exit(1)
         
-        print("Processing completed successfully!")
+        print(args.output)
         
     except Exception as e:
         print(f"Error during processing: {e}")
