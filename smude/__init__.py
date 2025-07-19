@@ -25,7 +25,7 @@ logger = get_logger()
 
 
 class Smude():
-    def __init__(self, use_gpu: bool = False, binarize_output: bool = True, verbose: bool = False, reduce_noise: bool = False):
+    def __init__(self, use_gpu: bool = False, binarize_output: bool = True, verbose: bool = False, noise_reduction: dict = None):
         """
         Instantiate new Smude object for sheet music dewarping.
 
@@ -37,8 +37,10 @@ class Smude():
             Flag whether the output should be binarized, by default True.
         verbose : bool, optional
             Flag whether to enable verbose output with intermediate images, by default False.
-        reduce_noise : bool, optional
-            Apply noise reduction techniques during binarization, by default False.
+        noise_reduction : dict, optional
+            Dictionary controlling noise reduction aggressiveness during binarization.
+            Keys: 'hole_removal', 'opening_strength', 'closing_strength', 'median_strength'
+            Values: float multipliers (1.0 = default strength, 0 = disabled), by default None.
         checkpoint_path : str, optional
             Path to a trained U-Net model, by default the included 'model.ckpt'.
         """
@@ -47,7 +49,7 @@ class Smude():
         self.use_gpu = use_gpu
         self.binarize_output = binarize_output
         self.verbose = verbose
-        self.reduce_noise = reduce_noise
+        self.noise_reduction = noise_reduction
         self.step_counter = 0
 
         # Load Deep Learning model
@@ -122,7 +124,7 @@ class Smude():
 
         logging.info('Binarizing...')
         # Binarize ROI
-        binarized = binarize(result, reduce_noise=self.reduce_noise)
+        binarized = binarize(result, noise_reduction=self.noise_reduction)
 
         if self.verbose:
             self._save_verbose_image(binarized * 255, 'binarized')
@@ -296,10 +298,22 @@ def main():
     parser.add_argument('--no-binarization', help='Deactivate binarization', action='store_false')
     parser.add_argument('--use-gpu', help='use GPU', action='store_true')
     parser.add_argument('--verbose', help='Enable verbose output with intermediate images', action='store_true')
-    parser.add_argument('--reduce-noise', help='Apply noise reduction during binarization', action='store_true')
+    parser.add_argument('--noise-reduction', help='Noise reduction settings as comma-separated key=value pairs (e.g., hole_removal=1.5,opening_strength=2.0)', default=None)
     args = parser.parse_args()
 
-    smude = Smude(use_gpu=args.use_gpu, binarize_output=args.no_binarization, verbose=args.verbose, reduce_noise=args.reduce_noise)
+    # Parse noise reduction parameters
+    noise_reduction = None
+    if args.noise_reduction:
+        noise_reduction = {}
+        try:
+            for param in args.noise_reduction.split(','):
+                key, value = param.strip().split('=')
+                noise_reduction[key.strip()] = float(value.strip())
+        except ValueError:
+            print("Error: Invalid noise reduction format. Use key=value pairs separated by commas.")
+            exit(1)
+
+    smude = Smude(use_gpu=args.use_gpu, binarize_output=args.no_binarization, verbose=args.verbose, noise_reduction=noise_reduction)
 
     image = imread(args.infile)
     result = smude.process(image)

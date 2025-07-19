@@ -7,7 +7,7 @@ from skimage.morphology import remove_small_holes
 from skimage.segmentation import flood_fill
 
 #@profile
-def binarize(image: np.ndarray, holes_threshold: float = 20, reduce_noise: bool = False) -> np.ndarray:
+def binarize(image: np.ndarray, holes_threshold: float = 20, noise_reduction: dict = None) -> np.ndarray:
     """
     Binarize image using Sauvola algorithm.
 
@@ -17,8 +17,13 @@ def binarize(image: np.ndarray, holes_threshold: float = 20, reduce_noise: bool 
         RGB image to binarize.
     holes_threshold : float, optional
         Pixel areas covering less than the given number of pixels are removed in the process, by default 20.
-    reduce_noise : bool, optional
-        Apply noise reduction techniques to clean up the binarized image, by default False.
+    noise_reduction : dict, optional
+        Dictionary controlling noise reduction aggressiveness. Keys:
+        - 'hole_removal': float, multiplier for hole removal threshold (default 1.0)
+        - 'opening_strength': float, kernel size multiplier for opening operation (default 1.0)
+        - 'closing_strength': float, kernel size multiplier for closing operation (default 1.0)
+        - 'median_strength': float, kernel size multiplier for median filtering (default 1.0)
+        Set to None or empty dict to disable noise reduction.
 
     Returns
     -------
@@ -46,26 +51,56 @@ def binarize(image: np.ndarray, holes_threshold: float = 20, reduce_noise: bool 
     binary_sauvola = flood_fill(binary_sauvola, (0, 0), 0)
     binary_sauvola = flood_fill(binary_sauvola, (0, 0), 1)
 
-    if reduce_noise:
+    if noise_reduction:
         logging.info('Applying noise reduction')
         
-        # Convert to uint8 for morphological operations
-        binary_uint8 = (binary_sauvola * 255).astype(np.uint8)
+        # Default noise reduction parameters
+        default_params = {
+            'hole_removal': 1.0,
+            'opening_strength': 1.0,
+            'closing_strength': 1.0,
+            'median_strength': 1.0
+        }
         
-        # Remove small holes
-        binary_cleaned = remove_small_holes(binary_sauvola.astype(bool), area_threshold=holes_threshold)
+        # Merge with user parameters
+        params = {**default_params, **noise_reduction}
         
-        # Remove small objects (noise specks)
-        kernel_small = np.ones((2, 2), np.uint8)
-        binary_cleaned = cv2.morphologyEx(binary_cleaned.astype(np.uint8) * 255, cv2.MORPH_OPEN, kernel_small)
+        binary_cleaned = binary_sauvola.astype(bool)
         
-        # Close small gaps in text
-        kernel_close = np.ones((3, 3), np.uint8)
-        binary_cleaned = cv2.morphologyEx(binary_cleaned, cv2.MORPH_CLOSE, kernel_close)
+        # Remove small holes (adjustable threshold)
+        if params['hole_removal'] > 0:
+            hole_threshold = int(holes_threshold * params['hole_removal'])
+            binary_cleaned = remove_small_holes(binary_cleaned, area_threshold=hole_threshold)
+            if params['hole_removal'] != 1.0:
+                logging.info(f'Hole removal threshold: {hole_threshold}')
         
-        # Remove isolated pixels
-        kernel_median = np.ones((3, 3), np.uint8)
-        binary_cleaned = cv2.medianBlur(binary_cleaned, 3)
+        # Remove small objects (noise specks) with adjustable kernel size
+        if params['opening_strength'] > 0:
+            kernel_size = max(1, int(2 * params['opening_strength']))
+            kernel_small = np.ones((kernel_size, kernel_size), np.uint8)
+            binary_cleaned = cv2.morphologyEx(binary_cleaned.astype(np.uint8) * 255, cv2.MORPH_OPEN, kernel_small)
+            if params['opening_strength'] != 1.0:
+                logging.info(f'Opening kernel size: {kernel_size}x{kernel_size}')
+        else:
+            binary_cleaned = binary_cleaned.astype(np.uint8) * 255
+        
+        # Close small gaps in text with adjustable kernel size
+        if params['closing_strength'] > 0:
+            kernel_size = max(1, int(3 * params['closing_strength']))
+            kernel_close = np.ones((kernel_size, kernel_size), np.uint8)
+            binary_cleaned = cv2.morphologyEx(binary_cleaned, cv2.MORPH_CLOSE, kernel_close)
+            if params['closing_strength'] != 1.0:
+                logging.info(f'Closing kernel size: {kernel_size}x{kernel_size}')
+        
+        # Remove isolated pixels with adjustable kernel size
+        if params['median_strength'] > 0:
+            kernel_size = max(3, int(3 * params['median_strength']))
+            # Ensure kernel size is odd
+            if kernel_size % 2 == 0:
+                kernel_size += 1
+            binary_cleaned = cv2.medianBlur(binary_cleaned, kernel_size)
+            if params['median_strength'] != 1.0:
+                logging.info(f'Median blur kernel size: {kernel_size}')
         
         binary_sauvola = binary_cleaned > 0
         logging.info('Noise reduction completed')
