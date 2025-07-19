@@ -293,12 +293,21 @@ class Smude():
 
 def main():
     parser = argparse.ArgumentParser(description='Dewarp and binarize sheet music images.')
-    parser.add_argument('infile', help='Specify the input image')
-    parser.add_argument('-o', '--outfile', help='Specify the output image (default: result.png)', default='result.png')
-    parser.add_argument('--no-binarization', help='Deactivate binarization', action='store_false')
-    parser.add_argument('--use-gpu', help='use GPU', action='store_true')
-    parser.add_argument('--verbose', help='Enable verbose output with intermediate images', action='store_true')
-    parser.add_argument('--noise-reduction', help='Noise reduction settings as comma-separated key=value pairs (e.g., hole_removal=1.5,opening_strength=2.0)', default=None)
+    parser.add_argument('infile', help='Specify the input image file path')
+    parser.add_argument('-o', '--outfile', help='Specify the output image file path (default: result.png)', default='result.png')
+    parser.add_argument('--no-binarization', help='Deactivate binarization of output (default: enabled)', action='store_false')
+    parser.add_argument('--use-gpu', help='Use GPU acceleration for neural network inference (default: disabled)', action='store_true')
+    parser.add_argument('--verbose', help='Enable verbose logging with intermediate image outputs (default: disabled)', action='store_true')
+    parser.add_argument('--noise-reduction', 
+                       help='''Noise reduction settings as comma-separated key=value pairs. 
+                            Available parameters:
+                            - hole_removal: Hole removal threshold multiplier (range: 0.0-5.0, default: 1.0)
+                            - opening_strength: Opening operation kernel size multiplier (range: 0.0-5.0, default: 1.0) 
+                            - closing_strength: Closing operation kernel size multiplier (range: 0.0-5.0, default: 1.0)
+                            - median_strength: Median filter kernel size multiplier (range: 0.0-5.0, default: 1.0)
+                            Example: hole_removal=1.5,opening_strength=2.0,median_strength=0.8
+                            Set to 0 to disable specific operations''', 
+                       default=None)
     args = parser.parse_args()
 
     # Parse noise reduction parameters

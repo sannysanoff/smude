@@ -164,6 +164,7 @@ def get_top_bottom_stafflines(stafflines: List[UnivariateSpline], left: Callable
     max_dist : float, optional
         Maximum allowed distance from spline end points to left/right
         boundaries to count as 'complete' staff line.
+        Range: 1.0-20.0, by default 5.0.
 
     Returns
     -------
@@ -295,7 +296,8 @@ def estimate_focal_length(v_x: float, v_y: float, top: Tuple[UnivariateSpline, f
         Tuple consisting of (bottom staff line spline, spline parameter for
         left (start) point, spline parameter for right (end) point).
     f : float, optional
-        Initial guess for the focal length estimation, by default 3760.
+        Initial guess for the focal length estimation.
+        Range: 1000-10000, by default 3760.
 
     Returns
     -------

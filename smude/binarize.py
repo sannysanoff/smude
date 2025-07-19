@@ -16,13 +16,14 @@ def binarize(image: np.ndarray, holes_threshold: float = 20, noise_reduction: di
     image : np.ndarray
         RGB image to binarize.
     holes_threshold : float, optional
-        Pixel areas covering less than the given number of pixels are removed in the process, by default 20.
+        Pixel areas covering less than the given number of pixels are removed in the process.
+        Range: 1-100, by default 20.
     noise_reduction : dict, optional
         Dictionary controlling noise reduction aggressiveness. Keys:
-        - 'hole_removal': float, multiplier for hole removal threshold (default 1.0)
-        - 'opening_strength': float, kernel size multiplier for opening operation (default 1.0)
-        - 'closing_strength': float, kernel size multiplier for closing operation (default 1.0)
-        - 'median_strength': float, kernel size multiplier for median filtering (default 1.0)
+        - 'hole_removal': float, multiplier for hole removal threshold (range: 0.0-5.0, default 1.0)
+        - 'opening_strength': float, kernel size multiplier for opening operation (range: 0.0-5.0, default 1.0)  
+        - 'closing_strength': float, kernel size multiplier for closing operation (range: 0.0-5.0, default 1.0)
+        - 'median_strength': float, kernel size multiplier for median filtering (range: 0.0-5.0, default 1.0)
         Set to None or empty dict to disable noise reduction.
 
     Returns

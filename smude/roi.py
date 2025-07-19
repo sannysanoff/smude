@@ -58,7 +58,8 @@ def extract_roi_mask(image: np.ndarray, min_hull_ratio: float = 0.4, verbose: bo
     image : np.ndarray
         Input document image covering the entire ROI.
     min_hull_ratio : float, optional
-        Minimum ratio All/ROI for counting as "success", by default 0.3.
+        Minimum ratio All/ROI for counting as "success". 
+        Range: 0.1-0.9, by default 0.4.
     verbose : bool, optional
         Enable verbose logging, by default False.
 
