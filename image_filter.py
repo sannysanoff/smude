@@ -421,7 +421,7 @@ def apply_filter(image, filter_name, **kwargs):
     elif filter_name == 'bright_threshold':
         return bright_threshold_filter(image, kwargs['kernel_divisor'], kwargs['percentile'])
     elif filter_name == 'enhance_local_contrast':
-        return enhance_local_contrast_filter(image, kwargs['radius'])
+        return enhance_local_contrast_filter(image, **kwargs)
     else:
         raise ValueError(f"Unknown filter: {filter_name}")
 
