@@ -21,7 +21,7 @@ from .roi import extract_roi_mask, get_border
 from .utils import get_logger
 
 # --- Local-contrast enhancement helper ---------------------------------
-def enhance_local_contrast_filter(image, radius, **kwargs):
+def enhance_local_contrast_filter(image, radius, *, verbose=False, **kwargs):
     """Enhance local contrast using median-blur subtraction with mask preservation."""
     import cv2
     import numpy as np
@@ -34,6 +34,8 @@ def enhance_local_contrast_filter(image, radius, **kwargs):
 
     # helper to save any ndarray
     def _save_step(arr, name):
+        if not verbose:
+            return
         # ensure directory exists
         os.makedirs('verbose_steps', exist_ok=True)
         # convert to uint8 BGR for cv2.imwrite
@@ -206,7 +208,7 @@ class Smude():
 
         logging.info('Enhancing local contrast (step 10)...')
         enhanced = enhance_local_contrast_filter(
-            result, radius=5, threshold=128
+            result, radius=5, threshold=128, verbose=self.verbose
         )
         if self.verbose:
             self._save_verbose_image(enhanced, 'enhanced_local_contrast')
