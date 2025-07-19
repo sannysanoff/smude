@@ -17,10 +17,10 @@ import numpy as np
 from scipy import interpolate
 from scipy.integrate import quad
 from scipy.interpolate import UnivariateSpline, interp1d
-from scipy.ndimage.measurements import label
+from scipy.ndimage import label
 from scipy.optimize import fsolve, minimize
 from scipy.spatial.distance import euclidean
-from skimage.morphology import skeletonize, square
+from skimage.morphology import skeletonize, footprint_rectangle
 from skimage.transform import hough_line, hough_line_peaks
 
 from .utils import *
@@ -93,8 +93,10 @@ def get_stafflines(upper_img: np.ndarray, lower_img: np.ndarray, step_size: int)
     splines = []
     for image in [upper_img, lower_img]:
         # Morphological operation to close potential gaps
-        #image_closed = cv.dilate(image, square(35))
-        image_closed = cv.morphologyEx(image, cv.MORPH_CLOSE, square(25))
+        #image_closed = cv.dilate(image, footprint_rectangle((35, 35)))
+        image_closed = cv.morphologyEx(
+            image, cv.MORPH_CLOSE, footprint_rectangle((25, 25))
+        )
 
         # Segmentize image to get individual staff line instances
         labels, count = label(image_closed)
