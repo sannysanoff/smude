@@ -691,6 +691,7 @@ def mrcdi(input_img: np.ndarray, barlines_img: np.ndarray, upper_img: np.ndarray
         logging.info(f'Staff line detection step size: {step_size}')
         logging.info(f'Found {len(stafflines)} staff lines')
 
+    logging.info('Identifying top and bottom staff lines')
     top, bottom = get_top_bottom_stafflines(stafflines, left, right)
     
     if verbose:
@@ -743,8 +744,10 @@ def mrcdi(input_img: np.ndarray, barlines_img: np.ndarray, upper_img: np.ndarray
 
     # Another approach, needs testing
     # Before the minimize call
-    print("Shape of top_parametric:", np.shape(top_parametric(0.5)))
-    print("Shape of bottom_parametric:", np.shape(bottom_parametric(0.5)))
+    logging.info("Computing parametric boundaries")
+    if verbose:
+        logging.info("Shape of top_parametric: %s", np.shape(top_parametric(0.5)))
+        logging.info("Shape of bottom_parametric: %s", np.shape(bottom_parametric(0.5)))
 
     # Now the minimize call
     t_max_dist = minimize(lambda t: euclidean(to_numpy_1d(top_parametric(t)), to_numpy_1d(bottom_parametric(t))), 0.5, bounds=[(0, 1)]).x[0]

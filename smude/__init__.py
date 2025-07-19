@@ -18,6 +18,10 @@ from .binarize import binarize
 from .model import load_model
 from .mrcdi import mrcdi
 from .roi import extract_roi_mask, get_border
+from .utils import get_logger
+
+# Initialize logging
+logger = get_logger()
 
 
 class Smude():

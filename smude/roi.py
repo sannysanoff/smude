@@ -1,5 +1,6 @@
 __author__ = "Simon Waloschek"
 
+import logging
 from typing import Tuple
 
 import cv2
