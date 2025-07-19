@@ -20,6 +20,62 @@ from .mrcdi import mrcdi
 from .roi import extract_roi_mask, get_border
 from .utils import get_logger
 
+# --- Local-contrast enhancement helper ---------------------------------
+def enhance_local_contrast_filter(image, radius, **kwargs):
+    """Enhance local contrast using median-blur subtraction with mask preservation."""
+    import cv2
+    import numpy as np
+    import time
+
+    start_time = time.time()
+    total_steps = 6
+    current_step = 0
+
+    # Step 1: mask for pixels == 0
+    current_step += 1
+    mask = (image == 0) if image.ndim == 2 else np.any(image == 0, axis=2)
+    kernel_size = 2 * radius + 1
+
+    # Step 2: grayscale + normalize non-masked to 1..255
+    current_step += 1
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if image.ndim == 3 else image.astype(np.uint8)
+    gray = gray.astype(np.float32)
+    gray[mask] = 0.0
+    non_masked = gray[~mask]
+    if len(non_masked):
+        g_min, g_max = non_masked.min(), non_masked.max()
+        gray[~mask] = 1.0 + 254.0 * (gray[~mask] - g_min) / (g_max - g_min) if g_max > g_min else 128.0
+    else:
+        gray[~mask] = 128.0
+
+    # Step 3: median blur
+    current_step += 1
+    temp = gray.copy()
+    temp[mask] = np.mean(gray[~mask]) if np.any(~mask) else 128.0
+    blurred = cv2.medianBlur(temp.astype(np.uint8), kernel_size).astype(np.float32)
+    blurred[mask] = 0.0
+
+    # Step 4: high-pass filter & normalize 1..254
+    current_step += 1
+    contrast_enhanced = gray - blurred
+    non_masked_pixels = contrast_enhanced[~mask]
+    if len(non_masked_pixels):
+        min_val, max_val = non_masked_pixels.min(), non_masked_pixels.max()
+        if max_val > min_val:
+            contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) / (max_val - min_val)) * 253 + 1
+        else:
+            contrast_enhanced[~mask] = 128
+    else:
+        contrast_enhanced[~mask] = 128
+
+    # Step 5: threshold
+    current_step += 1
+    threshold = kwargs.get('threshold', 128)
+    binary = np.where(contrast_enhanced < threshold, 1, 254)
+    binary[mask] = 0
+    return binary.astype(np.uint8)
+# -----------------------------------------------------------------------
+
 # Initialize logging
 logger = get_logger()
 
@@ -123,7 +179,6 @@ class Smude():
             self._save_verbose_image(result, 'masked_roi')
 
         logging.info('Enhancing local contrast (step 10)...')
-        from .image_filter import enhance_local_contrast_filter
         enhanced = enhance_local_contrast_filter(
             result, radius=5, threshold=128
         )
