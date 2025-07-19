@@ -180,17 +180,13 @@ def enhance_local_contrast_filter(image, radius, **kwargs):
     step_start = time.time()
     
     # Debug: Show original and blurred value ranges
-    if len(image.shape) == 3:
-        orig_min, orig_max = np.min(result[~mask]), np.max(result[~mask])
-        blur_min, blur_max = np.min(blurred[~mask]), np.max(blurred[~mask])
-    else:
-        orig_min, orig_max = np.min(result[~mask]), np.max(result[~mask])
-        blur_min, blur_max = np.min(blurred[~mask]), np.max(blurred[~mask])
+    orig_min, orig_max = np.min(gray[~mask]), np.max(gray[~mask])
+    blur_min, blur_max = np.min(blurred[~mask]), np.max(blurred[~mask])
     
     print(f"Original image value range: {orig_min:.1f} to {orig_max:.1f}")
     print(f"Blurred image value range: {blur_min:.1f} to {blur_max:.1f}")
     
-    contrast_enhanced = result - blurred
+    contrast_enhanced = gray - blurred
     
     # Normalize high-pass result to 1..254 (keep mask 0)
     non_masked_pixels = contrast_enhanced[~mask]
@@ -206,10 +202,7 @@ def enhance_local_contrast_filter(image, radius, **kwargs):
         contrast_enhanced[~mask] = 128
     
     # Debug: Show high-pass filter result range
-    if len(image.shape) == 3:
-        hp_min, hp_max = np.min(contrast_enhanced[~mask]), np.max(contrast_enhanced[~mask])
-    else:
-        hp_min, hp_max = np.min(contrast_enhanced[~mask]), np.max(contrast_enhanced[~mask])
+    hp_min, hp_max = np.min(contrast_enhanced[~mask]), np.max(contrast_enhanced[~mask])
     
     print(f"High-pass filter result range: {hp_min:.1f} to {hp_max:.1f}")
     print(f"Step {current_step} completed in {time.time() - step_start:.2f}s")
