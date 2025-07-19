@@ -49,7 +49,7 @@ def auto_canny(image, sigma=0):
     return edged
 
 
-def extract_roi_mask(image: np.ndarray, min_hull_ratio: float = 0.4) -> Tuple[np.ndarray, float]:
+def extract_roi_mask(image: np.ndarray, min_hull_ratio: float = 0.4, verbose: bool = False) -> Tuple[np.ndarray, float]:
     """
     Extract region of interest (ROI) for the given image.
 
@@ -59,6 +59,8 @@ def extract_roi_mask(image: np.ndarray, min_hull_ratio: float = 0.4) -> Tuple[np
         Input document image covering the entire ROI.
     min_hull_ratio : float, optional
         Minimum ratio All/ROI for counting as "success", by default 0.3.
+    verbose : bool, optional
+        Enable verbose logging, by default False.
 
     Returns
     -------
@@ -72,21 +74,31 @@ def extract_roi_mask(image: np.ndarray, min_hull_ratio: float = 0.4) -> Tuple[np
     Exception
         If the minimum desired ratio could not be achieved, an error is raised.
     """
+    logging.info('Starting ROI extraction')
     # Scale image to fixed size
     size = 512
     width, height, _ = image.shape
     image_resized = cv2.resize(image, (size, size))
 
+    if verbose:
+        logging.info(f'Original image size: {width}x{height}, resized to {size}x{size}')
+
+    logging.info('Preprocessing image for segmentation')
     image_gray = cv2.cvtColor(image_resized, cv2.COLOR_RGB2GRAY)
     image_eq = equalize_adapthist(image_gray) * 255
     image_canny = auto_canny(image_eq.astype(np.uint8))
     image_canny = cv2.morphologyEx(
         image_canny, cv2.MORPH_DILATE, kernel=footprint_rectangle((2, 2))
     )
+    
+    logging.info('Performing image segmentation')
     image_segmented = felzenszwalb(image_canny, scale=1000, sigma=0.3, min_size=50)
 
     segment_sizes = np.bincount(image_segmented.flatten())
     segments = np.argsort(-segment_sizes)
+    
+    if verbose:
+        logging.info(f'Segmentation found {len(segments)} segments, largest has {segment_sizes[segments[0]]} pixels')
 
     # Iterate over 5 largest segments, starting from largest
     for s in segments[:5]:
@@ -107,13 +119,21 @@ def extract_roi_mask(image: np.ndarray, min_hull_ratio: float = 0.4) -> Tuple[np
 
         # Exit if hull_ratio is sufficient
         hull_ratio = np.sum(hull) / (size**2)
-        if hull_ratio >= min_hull_ratio and (int(np.any(hull[0])) + int(np.any(hull[size-1])) + int(np.any(hull[:,0])) + int(np.any(hull[:,size-1]))) < 4:
+        border_touches = int(np.any(hull[0])) + int(np.any(hull[size-1])) + int(np.any(hull[:,0])) + int(np.any(hull[:,size-1]))
+        
+        if verbose:
+            logging.info(f'Segment {s}: hull_ratio={hull_ratio:.4f}, border_touches={border_touches}')
+        
+        if hull_ratio >= min_hull_ratio and border_touches < 4:
+            if verbose:
+                logging.info(f'Selected segment {s} with hull_ratio={hull_ratio:.4f}')
             break
 
     # Raise error if hull_ratio criterion could not be met
     if hull_ratio < min_hull_ratio:
         raise Exception('ROI could not be computed')
 
+    logging.info('Finalizing ROI mask')
     # Resize mask back to original image size
     mask_fullsize = cv2.resize(hull.astype(np.uint8), (height, width))
 
@@ -123,4 +143,5 @@ def extract_roi_mask(image: np.ndarray, min_hull_ratio: float = 0.4) -> Tuple[np
     )
     mask_ratio = np.sum(hull) / (size**2)
 
+    logging.info(f'ROI extraction completed with mask ratio: {mask_ratio:.4f}')
     return mask_fullsize, mask_ratio
