@@ -6,6 +6,7 @@ Applies various filters to images with command line interface.
 
 import argparse
 import sys
+import time
 import cv2
 import numpy as np
 
@@ -28,16 +29,38 @@ def replace_black_filter(image):
     
     # Get coordinates of black pixels
     black_coords = np.where(black_mask)
+    total_black_pixels = len(black_coords[0])
+    
+    print(f"Found {total_black_pixels} black pixels to process")
+    
+    # Progress tracking
+    start_time = time.time()
+    last_update_time = start_time
     
     # Process each black pixel
-    for i in range(len(black_coords[0])):
+    for i in range(total_black_pixels):
         y, x = black_coords[0][i], black_coords[1][i]
         
-        # Find replacement color using expanding radius
+        # Find replacement color using expanding radius (50px steps)
         replacement_color = find_dominant_color_around_pixel(image, x, y, height, width)
         
         # Replace the black pixel
         result[y, x] = replacement_color
+        
+        # Progress reporting every second
+        current_time = time.time()
+        if current_time - last_update_time >= 1.0:
+            progress_percent = (i + 1) / total_black_pixels * 100
+            elapsed_time = current_time - start_time
+            estimated_total_time = elapsed_time / (i + 1) * total_black_pixels
+            remaining_time = estimated_total_time - elapsed_time
+            
+            print(f"Progress: {progress_percent:.1f}% ({i + 1}/{total_black_pixels}) - "
+                  f"Elapsed: {elapsed_time:.1f}s, Estimated remaining: {remaining_time:.1f}s")
+            last_update_time = current_time
+    
+    total_time = time.time() - start_time
+    print(f"Completed processing {total_black_pixels} pixels in {total_time:.2f}s")
     
     return result
 
