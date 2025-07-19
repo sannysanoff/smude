@@ -128,7 +128,15 @@ def get_dominant_color(region, non_black_mask):
 
 def enhance_local_contrast_filter(image, radius):
     """Enhance local contrast using median blur subtraction with mask preservation."""
-    # Create mask for pixels that are exactly 0 (to be preserved)
+    start_time = time.time()
+    total_steps = 6
+    current_step = 0
+    
+    # Step 1: Create mask for pixels that are exactly 0 (to be preserved)
+    current_step += 1
+    print(f"Step {current_step}/{total_steps}: Creating mask for preserved pixels...")
+    step_start = time.time()
+    
     if len(image.shape) == 3:
         # Color image - check if all channels are 0
         mask = np.all(image == 0, axis=2)
@@ -142,16 +150,27 @@ def enhance_local_contrast_filter(image, radius):
     # Convert radius to kernel size (must be odd)
     kernel_size = 2 * radius + 1
     print(f"Median blur kernel size: {kernel_size}")
+    print(f"Step {current_step} completed in {time.time() - step_start:.2f}s")
     
-    # Create working copy
+    # Step 2: Create working copy and fill masked pixels
+    current_step += 1
+    print(f"Step {current_step}/{total_steps}: Preparing image data...")
+    step_start = time.time()
+    
     result = image.copy().astype(np.float32)
+    print(f"Step {current_step} completed in {time.time() - step_start:.2f}s")
     
-    # Apply median blur while preserving masked areas
-    print("Applying median blur...")
+    # Step 3: Apply median blur while preserving masked areas
+    current_step += 1
+    print(f"Step {current_step}/{total_steps}: Applying median blur...")
+    step_start = time.time()
+    
     if len(image.shape) == 3:
         # Color image
         blurred = np.zeros_like(result)
-        for channel in range(image.shape[2]):
+        total_channels = image.shape[2]
+        for channel in range(total_channels):
+            print(f"  Processing channel {channel + 1}/{total_channels}...")
             # Create temporary image with masked pixels filled with surrounding values
             temp_channel = image[:, :, channel].copy().astype(np.float32)
             temp_channel = fill_masked_pixels(temp_channel, mask)
@@ -165,12 +184,21 @@ def enhance_local_contrast_filter(image, radius):
         temp_image = fill_masked_pixels(temp_image, mask)
         blurred = cv2.medianBlur(temp_image.astype(np.uint8), kernel_size).astype(np.float32)
     
-    # Subtract blurred from original (high-pass filter)
-    print("Computing high-pass filter (original - blurred)...")
-    contrast_enhanced = result - blurred
+    print(f"Step {current_step} completed in {time.time() - step_start:.2f}s")
     
-    # Normalize contrast
-    print("Normalizing contrast...")
+    # Step 4: Subtract blurred from original (high-pass filter)
+    current_step += 1
+    print(f"Step {current_step}/{total_steps}: Computing high-pass filter (original - blurred)...")
+    step_start = time.time()
+    
+    contrast_enhanced = result - blurred
+    print(f"Step {current_step} completed in {time.time() - step_start:.2f}s")
+    
+    # Step 5: Normalize contrast
+    current_step += 1
+    print(f"Step {current_step}/{total_steps}: Normalizing contrast...")
+    step_start = time.time()
+    
     # Only consider non-masked pixels for normalization
     if len(image.shape) == 3:
         non_masked_pixels = contrast_enhanced[~mask]
@@ -192,8 +220,13 @@ def enhance_local_contrast_filter(image, radius):
             else:
                 contrast_enhanced[~mask] = 128
     
-    # Restore original masked pixels (value 0)
-    print("Restoring masked pixels...")
+    print(f"Step {current_step} completed in {time.time() - step_start:.2f}s")
+    
+    # Step 6: Restore original masked pixels and finalize
+    current_step += 1
+    print(f"Step {current_step}/{total_steps}: Restoring masked pixels and finalizing...")
+    step_start = time.time()
+    
     if len(image.shape) == 3:
         contrast_enhanced[mask] = [0, 0, 0]
     else:
@@ -202,7 +235,10 @@ def enhance_local_contrast_filter(image, radius):
     # Convert back to uint8
     result = np.clip(contrast_enhanced, 0, 255).astype(np.uint8)
     
-    print("Local contrast enhancement completed")
+    print(f"Step {current_step} completed in {time.time() - step_start:.2f}s")
+    
+    total_time = time.time() - start_time
+    print(f"Local contrast enhancement completed in {total_time:.2f}s")
     return result
 
 
