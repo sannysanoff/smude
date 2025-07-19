@@ -126,6 +126,131 @@ def get_dominant_color(region, non_black_mask):
         return dominant_color
 
 
+def enhance_local_contrast_filter(image, radius):
+    """Enhance local contrast using median blur subtraction with mask preservation."""
+    # Create mask for pixels that are exactly 0 (to be preserved)
+    if len(image.shape) == 3:
+        # Color image - check if all channels are 0
+        mask = np.all(image == 0, axis=2)
+    else:
+        # Grayscale image
+        mask = (image == 0)
+    
+    print(f"Found {np.sum(mask)} masked pixels (value 0) to preserve")
+    print(f"Using median blur radius: {radius}")
+    
+    # Convert radius to kernel size (must be odd)
+    kernel_size = 2 * radius + 1
+    print(f"Median blur kernel size: {kernel_size}")
+    
+    # Create working copy
+    result = image.copy().astype(np.float32)
+    
+    # Apply median blur while preserving masked areas
+    print("Applying median blur...")
+    if len(image.shape) == 3:
+        # Color image
+        blurred = np.zeros_like(result)
+        for channel in range(image.shape[2]):
+            # Create temporary image with masked pixels filled with surrounding values
+            temp_channel = image[:, :, channel].copy().astype(np.float32)
+            temp_channel = fill_masked_pixels(temp_channel, mask)
+            
+            # Apply median blur
+            blurred_channel = cv2.medianBlur(temp_channel.astype(np.uint8), kernel_size)
+            blurred[:, :, channel] = blurred_channel.astype(np.float32)
+    else:
+        # Grayscale image
+        temp_image = image.copy().astype(np.float32)
+        temp_image = fill_masked_pixels(temp_image, mask)
+        blurred = cv2.medianBlur(temp_image.astype(np.uint8), kernel_size).astype(np.float32)
+    
+    # Subtract blurred from original (high-pass filter)
+    print("Computing high-pass filter (original - blurred)...")
+    contrast_enhanced = result - blurred
+    
+    # Normalize contrast
+    print("Normalizing contrast...")
+    # Only consider non-masked pixels for normalization
+    if len(image.shape) == 3:
+        non_masked_pixels = contrast_enhanced[~mask]
+        if len(non_masked_pixels) > 0:
+            min_val = np.min(non_masked_pixels)
+            max_val = np.max(non_masked_pixels)
+            if max_val > min_val:
+                # Normalize to 0-255 range
+                contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) / (max_val - min_val)) * 255
+            else:
+                contrast_enhanced[~mask] = 128  # Neutral gray if no contrast
+    else:
+        non_masked_pixels = contrast_enhanced[~mask]
+        if len(non_masked_pixels) > 0:
+            min_val = np.min(non_masked_pixels)
+            max_val = np.max(non_masked_pixels)
+            if max_val > min_val:
+                contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) / (max_val - min_val)) * 255
+            else:
+                contrast_enhanced[~mask] = 128
+    
+    # Restore original masked pixels (value 0)
+    print("Restoring masked pixels...")
+    if len(image.shape) == 3:
+        contrast_enhanced[mask] = [0, 0, 0]
+    else:
+        contrast_enhanced[mask] = 0
+    
+    # Convert back to uint8
+    result = np.clip(contrast_enhanced, 0, 255).astype(np.uint8)
+    
+    print("Local contrast enhancement completed")
+    return result
+
+
+def fill_masked_pixels(image, mask):
+    """Fill masked pixels with average of surrounding non-masked pixels."""
+    result = image.copy()
+    
+    # Get coordinates of masked pixels
+    masked_coords = np.where(mask)
+    
+    if len(masked_coords[0]) == 0:
+        return result
+    
+    height, width = image.shape
+    
+    # For each masked pixel, find replacement value
+    for i in range(len(masked_coords[0])):
+        y, x = masked_coords[0][i], masked_coords[1][i]
+        
+        # Look in expanding neighborhoods for non-masked pixels
+        for radius in range(1, min(height, width) // 2):
+            y_min = max(0, y - radius)
+            y_max = min(height, y + radius + 1)
+            x_min = max(0, x - radius)
+            x_max = min(width, x + radius + 1)
+            
+            # Extract neighborhood
+            neighborhood = image[y_min:y_max, x_min:x_max]
+            neighborhood_mask = mask[y_min:y_max, x_min:x_max]
+            
+            # Get non-masked pixels in neighborhood
+            non_masked_pixels = neighborhood[~neighborhood_mask]
+            
+            if len(non_masked_pixels) > 0:
+                # Use average of non-masked pixels
+                result[y, x] = np.mean(non_masked_pixels)
+                break
+        else:
+            # Fallback: use overall image average (excluding masked pixels)
+            non_masked_global = image[~mask]
+            if len(non_masked_global) > 0:
+                result[y, x] = np.mean(non_masked_global)
+            else:
+                result[y, x] = 128  # Neutral gray
+    
+    return result
+
+
 def bright_threshold_filter(image, kernel_divisor, percentile):
     """Apply bright threshold filter using median blur and percentile-based thresholding."""
     height, width = image.shape[:2]
@@ -253,6 +378,8 @@ def apply_filter(image, filter_name, **kwargs):
         return replace_black_filter(image)
     elif filter_name == 'bright_threshold':
         return bright_threshold_filter(image, kwargs['kernel_divisor'], kwargs['percentile'])
+    elif filter_name == 'enhance_local_contrast':
+        return enhance_local_contrast_filter(image, kwargs['radius'])
     else:
         raise ValueError(f"Unknown filter: {filter_name}")
 
@@ -274,6 +401,8 @@ def main():
                               help='Replace absolute black pixels (0) with most dominant color in surrounding area')
     filter_group.add_argument('--bright-threshold', action='store_true',
                               help='Apply bright threshold filter using median blur and percentile-based thresholding')
+    filter_group.add_argument('--enhance-local-contrast', action='store_true',
+                              help='Enhance local contrast using median blur subtraction with mask preservation')
     
     # Parameters for bright-threshold filter
     parser.add_argument('--kernel-divisor', type=int, default=10,
@@ -281,15 +410,28 @@ def main():
     parser.add_argument('--percentile', type=float, default=80.0,
                         help='Percentile threshold for bright pixels (default: 80.0)')
     
+    # Parameters for enhance-local-contrast filter
+    parser.add_argument('--radius', type=int, default=5,
+                        help='Radius for median blur in enhance-local-contrast filter (default: 5)')
+    
     # Add help for filters
     parser.epilog = """
 Available Filters:
-  --replace-black    Replace absolute black pixels (0) with most dominant color
-                     in surrounding area. Uses expanding radius (50px steps) until
-                     at least 50% non-black pixels are found.
+  --replace-black           Replace absolute black pixels (0) with most dominant color
+                            in surrounding area. Uses expanding radius (50px steps) until
+                            at least 50% non-black pixels are found.
+  
+  --bright-threshold        Apply bright threshold filter using median blur and percentile-based
+                            thresholding. Parameters: --kernel-divisor, --percentile
+  
+  --enhance-local-contrast  Enhance local contrast using median blur subtraction with mask
+                            preservation. Uses color 0 as mask (keeps unmodified).
+                            Parameters: --radius
 
 Examples:
   python image_filter.py -i input.jpg -o output.jpg --replace-black
+  python image_filter.py -i input.jpg -o output.jpg --bright-threshold --kernel-divisor 8 --percentile 85
+  python image_filter.py -i input.jpg -o output.jpg --enhance-local-contrast --radius 10
 """
     
     args = parser.parse_args()
@@ -305,6 +447,11 @@ Examples:
         filter_kwargs = {
             'kernel_divisor': args.kernel_divisor,
             'percentile': args.percentile
+        }
+    elif args.enhance_local_contrast:
+        filter_name = 'enhance_local_contrast'
+        filter_kwargs = {
+            'radius': args.radius
         }
     
     if filter_name is None:
