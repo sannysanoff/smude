@@ -204,6 +204,19 @@ def enhance_local_contrast_filter(image, radius):
     
     contrast_enhanced = result - blurred
     
+    # Normalize high-pass result to 1..254 (keep mask 0)
+    non_masked_pixels = contrast_enhanced[~mask]
+    if len(non_masked_pixels) > 0:
+        min_val = np.min(non_masked_pixels)
+        max_val = np.max(non_masked_pixels)
+        if max_val > min_val:
+            contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) /
+                                        (max_val - min_val)) * 253 + 1
+        else:
+            contrast_enhanced[~mask] = 128
+    else:
+        contrast_enhanced[~mask] = 128
+    
     # Debug: Show high-pass filter result range
     if len(image.shape) == 3:
         hp_min, hp_max = np.min(contrast_enhanced[~mask]), np.max(contrast_enhanced[~mask])
@@ -213,38 +226,7 @@ def enhance_local_contrast_filter(image, radius):
     print(f"High-pass filter result range: {hp_min:.1f} to {hp_max:.1f}")
     print(f"Step {current_step} completed in {time.time() - step_start:.2f}s")
     
-    # Step 5: Normalize contrast
-    current_step += 1
-    print(f"Step {current_step}/{total_steps}: Normalizing contrast...")
-    step_start = time.time()
-    
-    # Use global min/max values from high-pass filter result for normalization
-    print("Using global min/max values for normalization")
-    
-    # Get min/max values from entire image (excluding masked pixels)
-    non_masked_pixels = contrast_enhanced[~mask]
-    if len(non_masked_pixels) > 0:
-        min_val = np.min(non_masked_pixels)
-        max_val = np.max(non_masked_pixels)
-        print(f"Global min/max values: {min_val:.2f} / {max_val:.2f}")
-        
-        if max_val > min_val:
-            # Normalize entire image to range 1-254
-            # (0 is reserved for mask, 255 is avoided)
-            contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) / (max_val - min_val)) * 253 + 1
-            # Debug: Show final normalized range
-            final_min, final_max = np.min(contrast_enhanced[~mask]), np.max(contrast_enhanced[~mask])
-            print(f"After normalization range: {final_min:.1f} to {final_max:.1f}")
-        else:
-            contrast_enhanced[~mask] = 128  # Neutral gray if no contrast
-            print("No contrast detected, setting to neutral gray (128)")
-    else:
-        print("Error: All pixels are masked, cannot normalize")
-        contrast_enhanced[~mask] = 128
-    
-    print(f"Step {current_step} completed in {time.time() - step_start:.2f}s")
-    
-    # Step 6: Restore original masked pixels and finalize
+    # Step 5: Restore original masked pixels and finalize
     current_step += 1
     print(f"Step {current_step}/{total_steps}: Restoring masked pixels and finalizing...")
     step_start = time.time()
