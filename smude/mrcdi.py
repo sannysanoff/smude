@@ -147,7 +147,7 @@ def get_stafflines(upper_img: np.ndarray, lower_img: np.ndarray, step_size: int)
     return splines
 
 
-def get_top_bottom_stafflines(stafflines: List[UnivariateSpline], left: Callable[[float], float], right: Callable[[float], float], max_dist: float = 20) -> Tuple[Tuple[UnivariateSpline, float, float], Tuple[UnivariateSpline, float, float]]:
+def get_top_bottom_stafflines(stafflines: List[UnivariateSpline], left: Callable[[float], float], right: Callable[[float], float], max_dist: float = 40) -> Tuple[Tuple[UnivariateSpline, float, float], Tuple[UnivariateSpline, float, float]]:
     """
     Return the topmost and bottommost 'complete' staff lines. 'Complete' means
     that the endings of the staff lines should be very close to the given left
