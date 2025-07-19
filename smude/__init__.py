@@ -73,6 +73,8 @@ def enhance_local_contrast_filter(image, radius, **kwargs):
     threshold = kwargs.get('threshold', 128)
     binary = np.where(contrast_enhanced < threshold, 1, 254)
     binary[mask] = 0
+    # Convert back to 3-channel RGB so downstream code expects RGB
+    binary = cv2.cvtColor(binary, cv2.COLOR_GRAY2RGB)
     return binary.astype(np.uint8)
 # -----------------------------------------------------------------------
 
