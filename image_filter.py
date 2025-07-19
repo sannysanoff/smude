@@ -263,6 +263,8 @@ def enhance_local_contrast_filter(image, radius):
 
     # --- NEW: show the real range after stretching ---
     print(f"After stretch, global brightness range: {np.min(stretched[~mask]):.1f} to {np.max(stretched[~mask]):.1f}")
+    # also show the central-circle range
+    print(f"After stretch, central-circle brightness range: {np.min(stretched[valid]):.1f} to {np.max(stretched[valid]):.1f}")
     # ----------------------------------------------
 
     # Restore masked pixels (keep 0)
