@@ -128,9 +128,7 @@ def sample_spline_arc(spline: UnivariateSpline, num_samples: int) -> np.ndarray:
 
     length = quad(_ds, 0, 1)[0]
 
-    pool = Pool()
-    b_vals = pool.map(partial(_solve_b, ds=_ds, length=length), np.linspace(0, 1, num_samples).tolist())
-    #b_vals = [solve_b(f, ds, length) for f in np.linspace(0, 1, num_samples)]
+    b_vals = [_solve_b(f, _ds, length) for f in np.linspace(0, 1, num_samples)]
 
     return np.asarray(b_vals)
 
