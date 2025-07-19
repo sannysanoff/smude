@@ -69,7 +69,7 @@ def enhance_local_contrast_filter(image, radius, *, verbose=False, **kwargs):
     current_step += 1
     temp = gray.copy()
     # Use image-width based kernel size but cap at 15 (max allowed by OpenCV)
-    kernel_size = min(15, max(3, int(image.shape[1] / 10)))
+    kernel_size = min(15, max(99, int(image.shape[1] / 10)))
     if kernel_size % 2 == 0:          # ensure odd
         kernel_size += 1
     kernel_size = min(15, kernel_size)    # final safeguard
