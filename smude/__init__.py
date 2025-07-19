@@ -26,14 +26,28 @@ def enhance_local_contrast_filter(image, radius, **kwargs):
     import cv2
     import numpy as np
     import time
+    import os
 
     start_time = time.time()
     total_steps = 6
     current_step = 0
 
+    # helper to save any ndarray
+    def _save_step(arr, name):
+        # ensure directory exists
+        os.makedirs('verbose_steps', exist_ok=True)
+        # convert to uint8 BGR for cv2.imwrite
+        if arr.dtype != np.uint8:
+            arr = arr.astype(np.uint8)
+        if len(arr.shape) == 2:           # grayscale
+            arr = cv2.cvtColor(arr, cv2.COLOR_GRAY2BGR)
+        cv2.imwrite(f'verbose_steps/{name}.png', arr)
+
     # Step 1: mask for pixels == 0
     current_step += 1
     mask = (image == 0) if image.ndim == 2 else np.any(image == 0, axis=2)
+    _save_step(mask.astype(np.uint8) * 255, f'01_mask')
+
     kernel_size = 2 * radius + 1
 
     # Step 2: grayscale + normalize non-masked to 1..255
@@ -47,6 +61,7 @@ def enhance_local_contrast_filter(image, radius, **kwargs):
         gray[~mask] = 1.0 + 254.0 * (gray[~mask] - g_min) / (g_max - g_min) if g_max > g_min else 128.0
     else:
         gray[~mask] = 128.0
+    _save_step(gray, f'02_gray_normalized')
 
     # Step 3: median blur
     current_step += 1
@@ -54,6 +69,7 @@ def enhance_local_contrast_filter(image, radius, **kwargs):
     temp[mask] = np.mean(gray[~mask]) if np.any(~mask) else 128.0
     blurred = cv2.medianBlur(temp.astype(np.uint8), kernel_size).astype(np.float32)
     blurred[mask] = 0.0
+    _save_step(blurred, f'03_blurred')
 
     # Step 4: high-pass filter & normalize 1..254
     current_step += 1
@@ -67,15 +83,19 @@ def enhance_local_contrast_filter(image, radius, **kwargs):
             contrast_enhanced[~mask] = 128
     else:
         contrast_enhanced[~mask] = 128
+    _save_step(contrast_enhanced, f'04_contrast_enhanced')
 
     # Step 5: threshold
     current_step += 1
     threshold = kwargs.get('threshold', 128)
     binary = np.where(contrast_enhanced < threshold, 1, 254)
     binary[mask] = 0
+    _save_step(binary, f'05_binary')
+
     # Convert back to 3-channel RGB so downstream code expects RGB
     binary = binary.astype(np.uint8)
     binary = cv2.cvtColor(binary, cv2.COLOR_GRAY2RGB)
+    _save_step(binary, f'06_final_rgb')
     return binary
 # -----------------------------------------------------------------------
 
