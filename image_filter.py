@@ -191,7 +191,26 @@ def enhance_local_contrast_filter(image, radius):
     print(f"Step {current_step}/{total_steps}: Computing high-pass filter (original - blurred)...")
     step_start = time.time()
     
+    # Debug: Show original and blurred value ranges
+    if len(image.shape) == 3:
+        orig_min, orig_max = np.min(result[~mask]), np.max(result[~mask])
+        blur_min, blur_max = np.min(blurred[~mask]), np.max(blurred[~mask])
+    else:
+        orig_min, orig_max = np.min(result[~mask]), np.max(result[~mask])
+        blur_min, blur_max = np.min(blurred[~mask]), np.max(blurred[~mask])
+    
+    print(f"Original image value range: {orig_min:.1f} to {orig_max:.1f}")
+    print(f"Blurred image value range: {blur_min:.1f} to {blur_max:.1f}")
+    
     contrast_enhanced = result - blurred
+    
+    # Debug: Show high-pass filter result range
+    if len(image.shape) == 3:
+        hp_min, hp_max = np.min(contrast_enhanced[~mask]), np.max(contrast_enhanced[~mask])
+    else:
+        hp_min, hp_max = np.min(contrast_enhanced[~mask]), np.max(contrast_enhanced[~mask])
+    
+    print(f"High-pass filter result range: {hp_min:.1f} to {hp_max:.1f}")
     print(f"Step {current_step} completed in {time.time() - step_start:.2f}s")
     
     # Step 5: Normalize contrast
@@ -251,8 +270,12 @@ def enhance_local_contrast_filter(image, radius):
             print(f"Central region min/max values: {min_val:.2f} / {max_val:.2f}")
             if max_val > min_val:
                 contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) / (max_val - min_val)) * 253 + 1
+                # Debug: Show final normalized range
+                final_min, final_max = np.min(contrast_enhanced[~mask]), np.max(contrast_enhanced[~mask])
+                print(f"After normalization range: {final_min:.1f} to {final_max:.1f}")
             else:
                 contrast_enhanced[~mask] = 128
+                print("No contrast detected, setting to neutral gray (128)")
         else:
             # Fallback to global min/max if central region is all masked
             non_masked_pixels = contrast_enhanced[~mask]
@@ -262,8 +285,12 @@ def enhance_local_contrast_filter(image, radius):
                 print(f"Global fallback min/max values: {min_val:.2f} / {max_val:.2f}")
                 if max_val > min_val:
                     contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) / (max_val - min_val)) * 253 + 1
+                    # Debug: Show final normalized range
+                    final_min, final_max = np.min(contrast_enhanced[~mask]), np.max(contrast_enhanced[~mask])
+                    print(f"After normalization range: {final_min:.1f} to {final_max:.1f}")
                 else:
                     contrast_enhanced[~mask] = 128
+                    print("No contrast detected, setting to neutral gray (128)")
     
     print(f"Step {current_step} completed in {time.time() - step_start:.2f}s")
     
