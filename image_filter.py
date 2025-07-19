@@ -126,7 +126,7 @@ def get_dominant_color(region, non_black_mask):
         return dominant_color
 
 
-def enhance_local_contrast_filter(image, radius):
+def enhance_local_contrast_filter(image, radius, **kwargs):
     """Enhance local contrast using median blur subtraction with mask preservation."""
     start_time = time.time()
     total_steps = 6
