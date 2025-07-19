@@ -226,52 +226,20 @@ def enhance_local_contrast_filter(image, radius):
     print(f"High-pass filter result range: {hp_min:.1f} to {hp_max:.1f}")
     print(f"Step {current_step} completed in {time.time() - step_start:.2f}s")
     
-    # Step 5: Global contrast stretch based on central circle statistics
+    # Step 5: Apply threshold to obtain binary output
     current_step += 1
-    print(f"Step {current_step}/{total_steps}: Global contrast stretch based on central circle...")
+    threshold = kwargs.get('threshold', 128)
+    print(f"Step {current_step}/{total_steps}: Applying threshold (T={threshold})...")
     step_start = time.time()
 
-    h, w = image.shape[:2]
-    radius = min(h, w) // 8
-    center_y, center_x = h // 2, w // 2
-
-    # Build circular mask for central region
-    y, x = np.ogrid[:h, :w]
-    dist = np.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
-    circle_mask = dist <= radius
-
-    # Collect min/max inside circle (excluding mask)
-    valid = circle_mask & ~mask
-    if np.any(valid):
-        min_val = np.min(contrast_enhanced[valid])
-        max_val = np.max(contrast_enhanced[valid])
-    else:
-        min_val, max_val = 0, 255
-
-    print(f"Central circle brightness range: {min_val:.1f} to {max_val:.1f}")
-
-    # Stretch contrast: map min_val→1, max_val→254
-    if max_val > min_val:
-        scale = 253 / (max_val - min_val)
-        offset = 1 - scale * min_val
-        stretched = contrast_enhanced * scale + offset
-    else:
-        stretched = np.full_like(contrast_enhanced, 128)
-
-    # Clip to 1..254 for all non-masked pixels
-    stretched = np.clip(stretched, 1, 254)
-
-    # --- NEW: show the real range after stretching ---
-    print(f"After stretch, global brightness range: {np.min(stretched[~mask]):.1f} to {np.max(stretched[~mask]):.1f}")
-    # also show the central-circle range
-    print(f"After stretch, central-circle brightness range: {np.min(stretched[valid]):.1f} to {np.max(stretched[valid]):.1f}")
-    # ----------------------------------------------
+    # Binary decision: 1 (below threshold) or 254 (above threshold)
+    binary = np.where(contrast_enhanced < threshold, 1, 254)
 
     # Restore masked pixels (keep 0)
-    stretched[mask] = 0
+    binary[mask] = 0
 
     # Convert to uint8
-    result = np.clip(stretched, 0, 255).astype(np.uint8)
+    result = binary.astype(np.uint8)
 
     print(f"Step {current_step} completed in {time.time() - step_start:.2f}s")
     
@@ -487,6 +455,8 @@ def main():
     # Parameters for enhance-local-contrast filter
     parser.add_argument('--radius', type=int, default=5,
                         help='Radius for median blur in enhance-local-contrast filter (default: 5)')
+    parser.add_argument('--threshold', type=int, default=128,
+                        help='Threshold for binary output (default: 128)')
     
     # Add help for filters
     parser.epilog = """
@@ -525,7 +495,8 @@ Examples:
     elif args.enhance_local_contrast:
         filter_name = 'enhance_local_contrast'
         filter_kwargs = {
-            'radius': args.radius
+            'radius': args.radius,
+            'threshold': args.threshold
         }
     
     if filter_name is None:
