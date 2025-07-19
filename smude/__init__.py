@@ -50,7 +50,7 @@ class Smude():
         self.binarize_output = binarize_output
         self.verbose = verbose
         self.noise_reduction = noise_reduction
-        self.step_counter = 0
+        self.step_counter = 9          # was 0
 
         # Load Deep Learning model
         dirname = os.path.dirname(__file__)
@@ -122,9 +122,17 @@ class Smude():
         if self.verbose:
             self._save_verbose_image(result, 'masked_roi')
 
+        logging.info('Enhancing local contrast (step 10)...')
+        from .image_filter import enhance_local_contrast_filter
+        enhanced = enhance_local_contrast_filter(
+            result, radius=5, threshold=128
+        )
+        if self.verbose:
+            self._save_verbose_image(enhanced, 'enhanced_local_contrast')
+
         logging.info('Binarizing...')
         # Binarize ROI
-        binarized = binarize(result, noise_reduction=self.noise_reduction)
+        binarized = binarize(enhanced, noise_reduction=self.noise_reduction)
 
         if self.verbose:
             self._save_verbose_image(binarized * 255, 'binarized')
