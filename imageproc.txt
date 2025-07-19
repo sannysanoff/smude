@@ -1,0 +1,155 @@
+# Image Processing Libraries and Utilities in SMUDE
+
+This document explains the image processing libraries and utilities used in the SMUDE (Sheet Music Dewarping) project and their specific roles in the processing pipeline.
+
+## Core Image Processing Libraries
+
+### 1. OpenCV (cv2)
+**Primary role**: Low-level image processing operations and computer vision tasks
+
+**Key uses in SMUDE**:
+- **Morphological Operations**: Opening, closing, dilation, erosion for noise removal and shape refinement
+- **Binarization**: Sauvola thresholding algorithm via `cv2.ximgproc.niBlackThreshold()`
+- **Image Transformations**: Resizing, remapping for geometric corrections
+- **Color Space Conversions**: RGB to grayscale conversions
+- **Edge Detection**: Canny edge detector for boundary detection
+- **Connected Components**: Finding and labeling connected regions
+- **Image Remapping**: Final dewarping step using computed mesh coordinates
+
+**Specific functions used**:
+- `cv2.morphologyEx()` - Morphological operations with custom kernels
+- `cv2.ximgproc.niBlackThreshold()` - Sauvola binarization
+- `cv2.remap()` - Geometric image transformation
+- `cv2.connectedComponents()` - Connected component analysis
+- `cv2.medianBlur()` - Noise reduction
+
+### 2. scikit-image (skimage)
+**Primary role**: High-level image processing and analysis
+
+**Key uses in SMUDE**:
+- **Image I/O**: Reading and writing images with `imread()` and `imsave()`
+- **Segmentation**: Felzenszwalb's efficient graph-based segmentation for ROI extraction
+- **Morphological Operations**: Skeletonization of staff lines, hole removal
+- **Feature Detection**: Hough line transform for barline detection
+- **Preprocessing**: Adaptive histogram equalization for contrast enhancement
+- **Flood Fill**: Border removal operations
+
+**Specific modules and functions**:
+- `skimage.io`: Image input/output operations
+- `skimage.segmentation.felzenszwalb()`: ROI segmentation
+- `skimage.morphology.skeletonize()`: Staff line thinning
+- `skimage.transform.hough_line()`: Barline detection
+- `skimage.exposure.equalize_adapthist()`: Contrast enhancement
+
+### 3. SciPy
+**Primary role**: Scientific computing, optimization, and advanced mathematical operations
+
+**Key uses in SMUDE**:
+- **Spline Interpolation**: Creating smooth curves from staff line points
+- **Optimization**: Focal length estimation and parameter fitting
+- **Numerical Integration**: Arc length calculations for parametric curves
+- **Image Processing**: Binary operations and labeling via `scipy.ndimage`
+- **Distance Calculations**: Euclidean distances for geometric computations
+
+**Specific modules and functions**:
+- `scipy.interpolate.UnivariateSpline()`: Staff line curve fitting
+- `scipy.optimize.minimize()`: Parameter optimization
+- `scipy.optimize.fsolve()`: Root finding for geometric intersections
+- `scipy.integrate.quad()`: Numerical integration for arc lengths
+- `scipy.ndimage.label()`: Connected component labeling
+
+### 4. NumPy
+**Primary role**: Fundamental array operations and mathematical computations
+
+**Key uses in SMUDE**:
+- **Array Operations**: Image data manipulation and indexing
+- **Mathematical Operations**: Linear algebra, trigonometry for geometric calculations
+- **Coordinate Transformations**: Converting between different coordinate systems
+- **Data Type Management**: Ensuring proper data types for different processing steps
+
+**Key operations**:
+- Array slicing and indexing for image regions
+- Mathematical functions (sin, cos, sqrt) for geometric calculations
+- Array broadcasting for efficient operations
+- Data type conversions (uint8, float32, bool)
+
+### 5. PyTorch
+**Primary role**: Deep learning inference and tensor operations
+
+**Key uses in SMUDE**:
+- **Model Loading**: Loading pre-trained U-Net segmentation model
+- **Tensor Operations**: Converting between NumPy arrays and PyTorch tensors
+- **GPU Acceleration**: Optional CUDA support for faster inference
+- **Image Preprocessing**: Tensor transformations for model input
+
+**Specific functions**:
+- `torch.from_numpy()`: Array to tensor conversion
+- `torch.nn.functional.softmax()`: Probability computation
+- `torchvision.transforms`: Image preprocessing pipeline
+
+## Processing Pipeline Integration
+
+### ROI Extraction (roi.py)
+1. **skimage.segmentation.felzenszwalb()**: Segments image into regions
+2. **cv2.morphologyEx()**: Refines segmentation results
+3. **scipy.ndimage.binary_fill_holes()**: Fills holes in ROI mask
+4. **cv2.connectedComponents()**: Identifies connected regions
+
+### Binarization (binarize.py)
+1. **cv2.createCLAHE()**: Contrast enhancement
+2. **cv2.ximgproc.niBlackThreshold()**: Sauvola binarization
+3. **skimage.segmentation.flood_fill()**: Border removal
+4. **cv2.morphologyEx()**: Noise reduction (optional)
+5. **skimage.morphology.remove_small_holes()**: Hole filling
+
+### Feature Extraction (model.py + __init__.py)
+1. **torchvision.transforms**: Image preprocessing for neural network
+2. **PyTorch U-Net**: Semantic segmentation into classes (staff lines, barlines, background)
+3. **torch.nn.functional.softmax()**: Convert logits to probabilities
+
+### Geometric Rectification (mrcdi.py)
+1. **skimage.transform.hough_line()**: Detect barlines for vanishing point estimation
+2. **scipy.interpolate.UnivariateSpline()**: Model staff line curves
+3. **scipy.optimize**: Focal length estimation and parameter optimization
+4. **scipy.integrate.quad()**: Compute arc lengths for parametric curves
+5. **cv2.remap()**: Final image dewarping using computed transformation
+
+## Utility Functions (utils.py)
+
+### Custom Implementations
+- **Numerical derivatives**: Replace deprecated scipy.misc.derivative
+- **Parametric spline conversion**: Convert regular splines to parametric form
+- **Arc length sampling**: Equidistant sampling along curved paths
+- **Line intersection calculations**: Geometric computations for rectification
+
+### Logging and Debugging
+- **Custom logging formatter**: Runtime-based timestamps
+- **Verbose image saving**: Intermediate result visualization using cv2.imwrite()
+
+## Key Design Decisions
+
+1. **Multi-library approach**: Each library used for its strengths
+   - OpenCV for performance-critical operations
+   - scikit-image for high-level algorithms
+   - SciPy for mathematical computations
+   - PyTorch for deep learning
+
+2. **Data type management**: Careful conversion between different formats
+   - Boolean masks for binary operations
+   - uint8 for image display and I/O
+   - float32/float64 for mathematical computations
+
+3. **Optional GPU acceleration**: PyTorch models can run on GPU when available
+
+4. **Robust error handling**: Fallback mechanisms and parameter validation
+
+5. **Modular design**: Each processing step can be independently configured and debugged
+
+## Performance Considerations
+
+- **Sequential processing**: Replaced multiprocessing due to macOS compatibility issues
+- **Spline approximation**: Balance between accuracy and computational efficiency
+- **Memory management**: Efficient array operations to handle large images
+- **Optional noise reduction**: Configurable processing intensity
+
+This integrated approach allows SMUDE to handle the complex task of sheet music dewarping by combining classical computer vision techniques with modern deep learning approaches.
