@@ -222,18 +222,65 @@ class Smude():
         self.step_counter += 1
         filename = f'verbose_{self.step_counter:04d}_{step_name}.jpg'
         
-        # Handle different image formats
-        if len(image.shape) == 3 and image.shape[2] == 3:
-            # RGB image
-            imsave(filename, image)
-        elif len(image.shape) == 3 and image.shape[2] == 1:
-            # Single channel with extra dimension
-            imsave(filename, image.squeeze(), cmap='gray')
-        else:
-            # Grayscale image
-            imsave(filename, image, cmap='gray')
-        
-        logging.info(f'Saved verbose image: {filename}')
+        try:
+            # Ensure image is in proper format for saving
+            if isinstance(image, torch.Tensor):
+                image = image.cpu().numpy()
+            
+            # Convert to numpy array if needed
+            image = np.asarray(image)
+            
+            # Handle different image formats and ensure proper data types
+            if len(image.shape) == 3 and image.shape[2] == 3:
+                # RGB image - ensure uint8
+                if image.dtype != np.uint8:
+                    if image.max() <= 1.0:
+                        image = (image * 255).astype(np.uint8)
+                    else:
+                        image = np.clip(image, 0, 255).astype(np.uint8)
+                cv.imwrite(filename, cv.cvtColor(image, cv.COLOR_RGB2BGR))
+            elif len(image.shape) == 3 and image.shape[2] == 1:
+                # Single channel with extra dimension - squeeze and save as grayscale
+                image = image.squeeze()
+                if image.dtype != np.uint8:
+                    if image.max() <= 1.0:
+                        image = (image * 255).astype(np.uint8)
+                    else:
+                        image = np.clip(image, 0, 255).astype(np.uint8)
+                cv.imwrite(filename, image)
+            elif len(image.shape) == 2:
+                # Grayscale image
+                if image.dtype != np.uint8:
+                    if image.max() <= 1.0:
+                        image = (image * 255).astype(np.uint8)
+                    else:
+                        image = np.clip(image, 0, 255).astype(np.uint8)
+                cv.imwrite(filename, image)
+            else:
+                # Handle unexpected shapes - flatten to 2D if possible
+                if image.size > 0:
+                    if len(image.shape) > 2:
+                        # Try to convert multi-dimensional to 2D
+                        image = np.squeeze(image)
+                        if len(image.shape) > 2:
+                            # Take first channel if still multi-dimensional
+                            image = image[:, :, 0] if image.shape[2] > 0 else image.flatten().reshape(1, -1)
+                    
+                    if image.dtype != np.uint8:
+                        if image.max() <= 1.0:
+                            image = (image * 255).astype(np.uint8)
+                        else:
+                            image = np.clip(image, 0, 255).astype(np.uint8)
+                    cv.imwrite(filename, image)
+                else:
+                    logging.warning(f'Cannot save empty image: {filename}')
+                    return
+            
+            logging.info(f'Saved verbose image: {filename}')
+            
+        except Exception as e:
+            logging.error(f'Failed to save verbose image {filename}: {str(e)}')
+            logging.error(f'Image shape: {image.shape}, dtype: {image.dtype}')
 
 def main():
     parser = argparse.ArgumentParser(description='Dewarp and binarize sheet music images.')
