@@ -7,7 +7,7 @@ from skimage.morphology import remove_small_holes
 from skimage.segmentation import flood_fill
 
 #@profile
-def binarize(image: np.ndarray, holes_threshold: float = 20) -> np.ndarray:
+def binarize(image: np.ndarray, holes_threshold: float = 20, reduce_noise: bool = False) -> np.ndarray:
     """
     Binarize image using Sauvola algorithm.
 
@@ -17,6 +17,8 @@ def binarize(image: np.ndarray, holes_threshold: float = 20) -> np.ndarray:
         RGB image to binarize.
     holes_threshold : float, optional
         Pixel areas covering less than the given number of pixels are removed in the process, by default 20.
+    reduce_noise : bool, optional
+        Apply noise reduction techniques to clean up the binarized image, by default False.
 
     Returns
     -------
@@ -43,6 +45,30 @@ def binarize(image: np.ndarray, holes_threshold: float = 20) -> np.ndarray:
     logging.info('Removing borders using flood fill')
     binary_sauvola = flood_fill(binary_sauvola, (0, 0), 0)
     binary_sauvola = flood_fill(binary_sauvola, (0, 0), 1)
+
+    if reduce_noise:
+        logging.info('Applying noise reduction')
+        
+        # Convert to uint8 for morphological operations
+        binary_uint8 = (binary_sauvola * 255).astype(np.uint8)
+        
+        # Remove small holes
+        binary_cleaned = remove_small_holes(binary_sauvola.astype(bool), area_threshold=holes_threshold)
+        
+        # Remove small objects (noise specks)
+        kernel_small = np.ones((2, 2), np.uint8)
+        binary_cleaned = cv2.morphologyEx(binary_cleaned.astype(np.uint8) * 255, cv2.MORPH_OPEN, kernel_small)
+        
+        # Close small gaps in text
+        kernel_close = np.ones((3, 3), np.uint8)
+        binary_cleaned = cv2.morphologyEx(binary_cleaned, cv2.MORPH_CLOSE, kernel_close)
+        
+        # Remove isolated pixels
+        kernel_median = np.ones((3, 3), np.uint8)
+        binary_cleaned = cv2.medianBlur(binary_cleaned, 3)
+        
+        binary_sauvola = binary_cleaned > 0
+        logging.info('Noise reduction completed')
 
     logging.info('Binarization completed')
     return binary_sauvola.astype(bool)

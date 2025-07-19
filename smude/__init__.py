@@ -25,7 +25,7 @@ logger = get_logger()
 
 
 class Smude():
-    def __init__(self, use_gpu: bool = False, binarize_output: bool = True, verbose: bool = False):
+    def __init__(self, use_gpu: bool = False, binarize_output: bool = True, verbose: bool = False, reduce_noise: bool = False):
         """
         Instantiate new Smude object for sheet music dewarping.
 
@@ -37,6 +37,8 @@ class Smude():
             Flag whether the output should be binarized, by default True.
         verbose : bool, optional
             Flag whether to enable verbose output with intermediate images, by default False.
+        reduce_noise : bool, optional
+            Apply noise reduction techniques during binarization, by default False.
         checkpoint_path : str, optional
             Path to a trained U-Net model, by default the included 'model.ckpt'.
         """
@@ -45,6 +47,7 @@ class Smude():
         self.use_gpu = use_gpu
         self.binarize_output = binarize_output
         self.verbose = verbose
+        self.reduce_noise = reduce_noise
         self.step_counter = 0
 
         # Load Deep Learning model
@@ -119,7 +122,7 @@ class Smude():
 
         logging.info('Binarizing...')
         # Binarize ROI
-        binarized = binarize(result)
+        binarized = binarize(result, reduce_noise=self.reduce_noise)
 
         if self.verbose:
             self._save_verbose_image(binarized * 255, 'binarized')
@@ -293,9 +296,10 @@ def main():
     parser.add_argument('--no-binarization', help='Deactivate binarization', action='store_false')
     parser.add_argument('--use-gpu', help='use GPU', action='store_true')
     parser.add_argument('--verbose', help='Enable verbose output with intermediate images', action='store_true')
+    parser.add_argument('--reduce-noise', help='Apply noise reduction during binarization', action='store_true')
     args = parser.parse_args()
 
-    smude = Smude(use_gpu=args.use_gpu, binarize_output=args.no_binarization, verbose=args.verbose)
+    smude = Smude(use_gpu=args.use_gpu, binarize_output=args.no_binarization, verbose=args.verbose, reduce_noise=args.reduce_noise)
 
     image = imread(args.infile)
     result = smude.process(image)
