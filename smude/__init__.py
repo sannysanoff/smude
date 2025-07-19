@@ -68,8 +68,8 @@ def enhance_local_contrast_filter(image, radius, *, verbose=False, **kwargs):
     # Step 3: median blur
     current_step += 1
     temp = gray.copy()
-    # Use image-width based kernel size
-    kernel_size = max(3, int(image.shape[1] / 10))
+    # Use a fixed small kernel size for removing isolated dark pixels
+    kernel_size = 5
     if kernel_size % 2 == 0:          # ensure odd
         kernel_size += 1
     # Fill masked pixels with the median of the non-masked ones
