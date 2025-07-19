@@ -137,7 +137,7 @@ def enhance_local_contrast_filter(image, radius, **kwargs):
     print(f"Step {current_step}/{total_steps}: Creating mask for preserved pixels...")
     step_start = time.time()
 
-    mask = (image == 0) if image.ndim == 3 else np.all(image == 0, axis=2)
+    mask = (image == 0) if image.ndim == 2 else np.any(image == 0, axis=2)
     print(f"Found {np.sum(mask)} masked pixels (value 0) to preserve")
     print(f"Using median blur radius: {radius}")
     kernel_size = 2 * radius + 1
