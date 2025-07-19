@@ -248,6 +248,8 @@ def enhance_local_contrast_filter(image, radius):
     else:
         min_val, max_val = 0, 255
 
+    print(f"Central circle brightness range: {min_val:.1f} to {max_val:.1f}")
+
     # Stretch contrast: map min_val→1, max_val→254
     if max_val > min_val:
         scale = 253 / (max_val - min_val)
