@@ -225,9 +225,11 @@ def enhance_local_contrast_filter(image, radius):
         if len(central_non_masked_pixels) > 0:
             min_val = np.min(central_non_masked_pixels)
             max_val = np.max(central_non_masked_pixels)
+            print(f"Central region min/max values: {min_val:.2f} / {max_val:.2f}")
             if max_val > min_val:
-                # Normalize entire image using central region's min/max
-                contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) / (max_val - min_val)) * 255
+                # Normalize entire image using central region's min/max to range 1-254
+                # (0 is reserved for mask, 255 is avoided)
+                contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) / (max_val - min_val)) * 253 + 1
             else:
                 contrast_enhanced[~mask] = 128  # Neutral gray if no contrast
         else:
@@ -236,8 +238,9 @@ def enhance_local_contrast_filter(image, radius):
             if len(non_masked_pixels) > 0:
                 min_val = np.min(non_masked_pixels)
                 max_val = np.max(non_masked_pixels)
+                print(f"Global fallback min/max values: {min_val:.2f} / {max_val:.2f}")
                 if max_val > min_val:
-                    contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) / (max_val - min_val)) * 255
+                    contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) / (max_val - min_val)) * 253 + 1
                 else:
                     contrast_enhanced[~mask] = 128
     else:
@@ -245,8 +248,9 @@ def enhance_local_contrast_filter(image, radius):
         if len(central_non_masked_pixels) > 0:
             min_val = np.min(central_non_masked_pixels)
             max_val = np.max(central_non_masked_pixels)
+            print(f"Central region min/max values: {min_val:.2f} / {max_val:.2f}")
             if max_val > min_val:
-                contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) / (max_val - min_val)) * 255
+                contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) / (max_val - min_val)) * 253 + 1
             else:
                 contrast_enhanced[~mask] = 128
         else:
@@ -255,8 +259,9 @@ def enhance_local_contrast_filter(image, radius):
             if len(non_masked_pixels) > 0:
                 min_val = np.min(non_masked_pixels)
                 max_val = np.max(non_masked_pixels)
+                print(f"Global fallback min/max values: {min_val:.2f} / {max_val:.2f}")
                 if max_val > min_val:
-                    contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) / (max_val - min_val)) * 255
+                    contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) / (max_val - min_val)) * 253 + 1
                 else:
                     contrast_enhanced[~mask] = 128
     
