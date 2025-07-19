@@ -26,7 +26,7 @@ from skimage.transform import hough_line, hough_line_peaks
 from .utils import *
 
 
-def get_outer_barlines(barline_img: np.ndarray) -> Tuple[Callable[[float], float], Callable[[float], float]]:
+def get_outer_barlines(barline_img: np.ndarray, verbose: bool = False) -> Tuple[Callable[[float], float], Callable[[float], float]]:
     """
     Return the outer barlines as lines each defined by slope and one point.
 
@@ -34,6 +34,8 @@ def get_outer_barlines(barline_img: np.ndarray) -> Tuple[Callable[[float], float
     ----------
     barline_img : np.ndarray
         Grayscale barline image.
+    verbose : bool, optional
+        Enable verbose logging, by default False.
 
     Returns
     -------
@@ -48,7 +50,11 @@ def get_outer_barlines(barline_img: np.ndarray) -> Tuple[Callable[[float], float
     tested_angles = np.linspace(-np.pi / 6, np.pi / 6, int(60 / 0.025))
     h, theta, d = hough_line(barline_img, theta=tested_angles)
     # Get peaks from Hough transform
-    peaks = np.stack(hough_line_peaks(h, theta, d, threshold=np.max(h) * 0.45))
+    threshold = np.max(h) * 0.45
+    peaks = np.stack(hough_line_peaks(h, theta, d, threshold=threshold))
+
+    if verbose:
+        logging.info(f'Hough transform: found {peaks.shape[1]} peaks with threshold {threshold:.2f}')
 
     origin = np.array((0, barline_img.shape[1]))
 
@@ -58,13 +64,15 @@ def get_outer_barlines(barline_img: np.ndarray) -> Tuple[Callable[[float], float
     y1, y2 = (dist - origin * np.cos(angle)) / np.sin(angle)
     left = line(x1=origin[0], x2=origin[1], y1=y1, y2=y2)
 
-
     # Rightmost vertical line
     r_idx = np.argmax(peaks[2])
     _, angle, dist = peaks[:, r_idx]
     y1, y2 = (dist - origin * np.cos(angle)) / np.sin(angle)
     right = line(x1=origin[0], x2=origin[1], y1=y1, y2=y2)
 
+    if verbose:
+        logging.info(f'Left barline: angle={np.degrees(peaks[1, l_idx]):.2f}°, distance={peaks[2, l_idx]:.2f}')
+        logging.info(f'Right barline: angle={np.degrees(peaks[1, r_idx]):.2f}°, distance={peaks[2, r_idx]:.2f}')
 
     return left, right
 
@@ -629,7 +637,7 @@ def generate_mesh(num_latitudes: int, num_longitudes: int, longitudes: List[Call
 def to_numpy_1d(arr):
     return np.array(arr).flatten()
 
-def mrcdi(input_img: np.ndarray, barlines_img: np.ndarray, upper_img: np.ndarray, lower_img: np.ndarray, background_img: np.ndarray, original_img: np.ndarray, optimize_f: bool = False) -> np.ndarray:
+def mrcdi(input_img: np.ndarray, barlines_img: np.ndarray, upper_img: np.ndarray, lower_img: np.ndarray, background_img: np.ndarray, original_img: np.ndarray, optimize_f: bool = False, verbose: bool = False) -> np.ndarray:
     """
     Perform metric rectification on given sheet music images.
     The algorithm is based on the paper
@@ -663,40 +671,49 @@ def mrcdi(input_img: np.ndarray, barlines_img: np.ndarray, upper_img: np.ndarray
     num_longitudes = int(w / min_dim * 20)
     num_latitudes = int(h / min_dim * 20)
 
+    if verbose:
+        logging.info(f'Image dimensions: {w}x{h}, min_dim: {min_dim}')
+        logging.info(f'Grid size: {num_longitudes} longitudes × {num_latitudes} latitudes')
 
     logging.info('Estimating vanishing point')
     left, right = get_outer_barlines(barlines_img)
     v_x, v_y = line_intersection(left, right)
+    
+    if verbose:
+        logging.info(f'Vanishing point: ({v_x:.2f}, {v_y:.2f})')
 
 
     logging.info('Getting top and bottom stafflines')
-    stafflines = get_stafflines(upper_img, lower_img, w//num_longitudes)
-    # import matplotlib.pyplot as plt
-    # plt.imshow(input_img, cmap='Greys')
-    # for s in stafflines:
-    #     x = s.get_knots()
-    #     y = [s(x) for x in x]
-    #     plt.scatter(x, y)
-
-    #     x = np.linspace(x[0], x[-1], 100)
-    #     y = [s(x) for x in x]
-    #     plt.plot(x, y)
-    # plt.show()
+    step_size = w//num_longitudes
+    stafflines = get_stafflines(upper_img, lower_img, step_size)
+    
+    if verbose:
+        logging.info(f'Staff line detection step size: {step_size}')
+        logging.info(f'Found {len(stafflines)} staff lines')
 
     top, bottom = get_top_bottom_stafflines(stafflines, left, right)
+    
+    if verbose:
+        top_knots = top[0].get_knots()
+        bottom_knots = bottom[0].get_knots()
+        logging.info(f'Top staff line: x_range=({top_knots[0]:.2f}, {top_knots[-1]:.2f}), boundaries=({top[1]:.2f}, {top[2]:.2f})')
+        logging.info(f'Bottom staff line: x_range=({bottom_knots[0]:.2f}, {bottom_knots[-1]:.2f}), boundaries=({bottom[1]:.2f}, {bottom[2]:.2f})')
 
 
     # logging.info('Estimating focal length')
     if optimize_f:
         f = estimate_focal_length(v_x, v_y, top, bottom, f=3760)
+        if verbose:
+            logging.info(f'Optimized focal length: {f:.2f}')
     else:
         f = 3760  # Value has so little influence, just fix it...
+        if verbose:
+            logging.info(f'Fixed focal length: {f}')
 
 
     logging.info('Expand left/right boundaries')
     # ... to cover the entire page
     left, right = expand_lr_boundaries(v_x, v_y, w, h)
-
 
     logging.info('Computing distant latitude')
     # Convert top/bottom to parametric splines
@@ -707,6 +724,10 @@ def mrcdi(input_img: np.ndarray, barlines_img: np.ndarray, upper_img: np.ndarray
     bottom_x_start, _ = func_intersection(bottom[0], left)
     bottom_x_end  , _ = func_intersection(bottom[0], right)
     bottom_parametric = to_parametric_spline(bottom[0], bottom_x_start, bottom_x_end)
+
+    if verbose:
+        logging.info(f'Top parametric spline bounds: ({top_x_start:.2f}, {top_x_end:.2f})')
+        logging.info(f'Bottom parametric spline bounds: ({bottom_x_start:.2f}, {bottom_x_end:.2f})')
 
     get_latitude_parametric = lambda mu, v_x=v_x, v_y=v_y, top=top, bottom=bottom: _get_latitude_parmetric(v_x, v_y, top_parametric, bottom_parametric, mu)
     get_latitude = lambda mu, v_x=v_x, v_y=v_y, top=top, bottom=bottom: _get_latitude(v_x, v_y, top_parametric, bottom_parametric, mu)
@@ -729,18 +750,29 @@ def mrcdi(input_img: np.ndarray, barlines_img: np.ndarray, upper_img: np.ndarray
     t_max_dist = minimize(lambda t: euclidean(to_numpy_1d(top_parametric(t)), to_numpy_1d(bottom_parametric(t))), 0.5, bounds=[(0, 1)]).x[0]
     mu_top = fsolve(lambda mu: get_latitude_parametric(mu)(t_max_dist)[1], 1)[0]
     mu_bottom = fsolve(lambda mu: get_latitude_parametric(mu)(t_max_dist)[1] - h, 0)[0]
+    
+    if verbose:
+        logging.info(f'Maximum distance parameter t: {t_max_dist:.4f}')
+        logging.info(f'Boundary parameters: mu_top={mu_top:.4f}, mu_bottom={mu_bottom:.4f}')
 
 
     logging.info('Computing longitudes')
     longitudes, D_parametric = get_longitudes(v_x, v_y, f, C_20, num_longitudes)
-
+    
+    if verbose:
+        logging.info(f'Generated {len(longitudes)} longitude lines')
 
     logging.info('Computing aspect ratio')
     ratio = compute_aspect_ratio(v_x, v_y, f, h, w, get_latitude_parametric(mu_top), get_latitude_parametric(mu_bottom), D_parametric)
-
+    
+    if verbose:
+        logging.info(f'Computed aspect ratio: {ratio:.4f}')
 
     logging.info('Generating mesh')
     orig_h, orig_w = original_img.shape
+    if verbose:
+        logging.info(f'Original image size: {orig_w}x{orig_h}')
+        logging.info(f'Resized image size: {w}x{h}')
     cols, rows = generate_mesh(num_latitudes, num_longitudes, longitudes, mu_top, mu_bottom, w, h, orig_w, orig_h, get_latitude)
 
     return cols, rows

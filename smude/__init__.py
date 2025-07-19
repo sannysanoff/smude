@@ -174,7 +174,8 @@ class Smude():
             lower_img = lower,
             background_img = background,
             original_img = binarized,
-            optimize_f = optimize_f
+            optimize_f = optimize_f,
+            verbose = self.verbose
         )
         
         if self.binarize_output:
