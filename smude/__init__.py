@@ -201,6 +201,9 @@ class Smude():
         if self.verbose:
             self._save_verbose_image(result, 'masked_roi')
 
+        if self.verbose:
+            self._save_verbose_image(result, 'before_enhance')
+
         logging.info('Enhancing local contrast (step 10)...')
         enhanced = enhance_local_contrast_filter(
             result, radius=5, threshold=128
