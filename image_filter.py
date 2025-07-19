@@ -324,7 +324,7 @@ Examples:
         print(f"Applying filter: {filter_name}")
         
         # Apply the filter
-        filtered_image = apply_filter(image, filter_name)
+        filtered_image = apply_filter(image, filter_name, **filter_kwargs)
         
         # Save the result
         success = cv2.imwrite(args.output, filtered_image)
