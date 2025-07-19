@@ -226,19 +226,45 @@ def enhance_local_contrast_filter(image, radius):
     print(f"High-pass filter result range: {hp_min:.1f} to {hp_max:.1f}")
     print(f"Step {current_step} completed in {time.time() - step_start:.2f}s")
     
-    # Step 5: Restore original masked pixels and finalize
+    # Step 5: Global contrast stretch based on central circle statistics
     current_step += 1
-    print(f"Step {current_step}/{total_steps}: Restoring masked pixels and finalizing...")
+    print(f"Step {current_step}/{total_steps}: Global contrast stretch based on central circle...")
     step_start = time.time()
-    
-    if len(image.shape) == 3:
-        contrast_enhanced[mask] = [0, 0, 0]
+
+    h, w = image.shape[:2]
+    radius = min(h, w) // 8
+    center_y, center_x = h // 2, w // 2
+
+    # Build circular mask for central region
+    y, x = np.ogrid[:h, :w]
+    dist = np.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
+    circle_mask = dist <= radius
+
+    # Collect min/max inside circle (excluding mask)
+    valid = circle_mask & ~mask
+    if np.any(valid):
+        min_val = np.min(contrast_enhanced[valid])
+        max_val = np.max(contrast_enhanced[valid])
     else:
-        contrast_enhanced[mask] = 0
-    
-    # Convert back to uint8
-    result = np.clip(contrast_enhanced, 0, 255).astype(np.uint8)
-    
+        min_val, max_val = 0, 255
+
+    # Stretch contrast: map min_val→1, max_val→254
+    if max_val > min_val:
+        scale = 253 / (max_val - min_val)
+        offset = 1 - scale * min_val
+        stretched = contrast_enhanced * scale + offset
+    else:
+        stretched = np.full_like(contrast_enhanced, 128)
+
+    # Clip to 1..254 for all non-masked pixels
+    stretched = np.clip(stretched, 1, 254)
+
+    # Restore masked pixels (keep 0)
+    stretched[mask] = 0
+
+    # Convert to uint8
+    result = np.clip(stretched, 0, 255).astype(np.uint8)
+
     print(f"Step {current_step} completed in {time.time() - step_start:.2f}s")
     
     total_time = time.time() - start_time
