@@ -235,9 +235,8 @@ class Smude():
         return dewarped
 
     def _save_verbose_image(self, image: np.ndarray, step_name: str):
-        """Save intermediate image with step counter and name."""
-        self.step_counter += 1
-        filename = f'verbose_{self.step_counter:04d}_{step_name}.jpg'
+        """Save intermediate image with descriptive name only."""
+        filename = f'verbose_{step_name}.jpg'
         
         try:
             # Ensure image is in proper format for saving
