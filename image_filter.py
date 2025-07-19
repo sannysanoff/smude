@@ -249,8 +249,12 @@ def enhance_local_contrast_filter(image, radius):
                 # Normalize entire image using central region's min/max to range 1-254
                 # (0 is reserved for mask, 255 is avoided)
                 contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) / (max_val - min_val)) * 253 + 1
+                # Debug: Show final normalized range
+                final_min, final_max = np.min(contrast_enhanced[~mask]), np.max(contrast_enhanced[~mask])
+                print(f"After normalization range: {final_min:.1f} to {final_max:.1f}")
             else:
                 contrast_enhanced[~mask] = 128  # Neutral gray if no contrast
+                print("No contrast detected, setting to neutral gray (128)")
         else:
             # Fallback to global min/max if central region is all masked
             non_masked_pixels = contrast_enhanced[~mask]
@@ -260,8 +264,12 @@ def enhance_local_contrast_filter(image, radius):
                 print(f"Global fallback min/max values: {min_val:.2f} / {max_val:.2f}")
                 if max_val > min_val:
                     contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) / (max_val - min_val)) * 253 + 1
+                    # Debug: Show final normalized range
+                    final_min, final_max = np.min(contrast_enhanced[~mask]), np.max(contrast_enhanced[~mask])
+                    print(f"After normalization range: {final_min:.1f} to {final_max:.1f}")
                 else:
                     contrast_enhanced[~mask] = 128
+                    print("No contrast detected, setting to neutral gray (128)")
     else:
         central_non_masked_pixels = central_region[~central_mask]
         if len(central_non_masked_pixels) > 0:
