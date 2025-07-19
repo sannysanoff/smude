@@ -261,6 +261,10 @@ def enhance_local_contrast_filter(image, radius):
     # Clip to 1..254 for all non-masked pixels
     stretched = np.clip(stretched, 1, 254)
 
+    # --- NEW: show the real range after stretching ---
+    print(f"After stretch, global brightness range: {np.min(stretched[~mask]):.1f} to {np.max(stretched[~mask]):.1f}")
+    # ----------------------------------------------
+
     # Restore masked pixels (keep 0)
     stretched[mask] = 0
 
