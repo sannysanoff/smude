@@ -36,14 +36,12 @@ def enhance_local_contrast_filter(image, radius, *, verbose=False, **kwargs):
     def _save_step(arr, name):
         if not verbose:
             return
-        # ensure directory exists
-        os.makedirs('verbose_steps', exist_ok=True)
-        # convert to uint8 BGR for cv2.imwrite
+        # ensure uint8 BGR for cv2.imwrite
         if arr.dtype != np.uint8:
             arr = arr.astype(np.uint8)
         if len(arr.shape) == 2:           # grayscale
             arr = cv2.cvtColor(arr, cv2.COLOR_GRAY2BGR)
-        cv2.imwrite(f'verbose_steps/{name}.png', arr)
+        cv2.imwrite(f'verbose_{name}.jpg', arr)
 
     # Step 1: mask for pixels == 0
     current_step += 1
