@@ -136,54 +136,42 @@ def enhance_local_contrast_filter(image, radius, **kwargs):
     current_step += 1
     print(f"Step {current_step}/{total_steps}: Creating mask for preserved pixels...")
     step_start = time.time()
-    
-    if len(image.shape) == 3:
-        # Color image - check if all channels are 0
-        mask = np.all(image == 0, axis=2)
-    else:
-        # Grayscale image
-        mask = (image == 0)
-    
+
+    mask = (image == 0) if image.ndim == 3 else np.all(image == 0, axis=2)
     print(f"Found {np.sum(mask)} masked pixels (value 0) to preserve")
     print(f"Using median blur radius: {radius}")
-    
-    # Convert radius to kernel size (must be odd)
     kernel_size = 2 * radius + 1
     print(f"Median blur kernel size: {kernel_size}")
     print(f"Step {current_step} completed in {time.time() - step_start:.2f}s")
-    
-    # Step 2: Create working copy and fill masked pixels
+
+    # Step 2: Convert to grayscale and normalize non-masked pixels to 1..255
     current_step += 1
-    print(f"Step {current_step}/{total_steps}: Preparing image data...")
+    print(f"Step {current_step}/{total_steps}: Converting to grayscale and normalizing...")
     step_start = time.time()
-    
-    result = image.copy().astype(np.float32)
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if image.ndim == 3 else image.astype(np.uint8)
+    gray = gray.astype(np.float32)
+    gray[mask] = 0.0
+    non_masked = gray[~mask]
+    if len(non_masked):
+        g_min, g_max = non_masked.min(), non_masked.max()
+        if g_max > g_min:
+            gray[~mask] = 1.0 + 254.0 * (gray[~mask] - g_min) / (g_max - g_min)
+        else:
+            gray[~mask] = 128.0
+    else:
+        gray[~mask] = 128.0
+    print(f"Normalized grayscale range: {gray[~mask].min():.1f} to {gray[~mask].max():.1f}")
     print(f"Step {current_step} completed in {time.time() - step_start:.2f}s")
-    
+
     # Step 3: Apply median blur while preserving masked areas
     current_step += 1
     print(f"Step {current_step}/{total_steps}: Applying median blur...")
     step_start = time.time()
-    
-    if len(image.shape) == 3:
-        # Color image
-        blurred = np.zeros_like(result)
-        total_channels = image.shape[2]
-        for channel in range(total_channels):
-            print(f"  Processing channel {channel + 1}/{total_channels}...")
-            # Create temporary image with masked pixels filled with surrounding values
-            temp_channel = image[:, :, channel].copy().astype(np.float32)
-            temp_channel = fill_masked_pixels(temp_channel, mask)
-            
-            # Apply median blur
-            blurred_channel = cv2.medianBlur(temp_channel.astype(np.uint8), kernel_size)
-            blurred[:, :, channel] = blurred_channel.astype(np.float32)
-    else:
-        # Grayscale image
-        temp_image = image.copy().astype(np.float32)
-        temp_image = fill_masked_pixels(temp_image, mask)
-        blurred = cv2.medianBlur(temp_image.astype(np.uint8), kernel_size).astype(np.float32)
-    
+    temp = gray.copy()
+    temp[mask] = np.mean(gray[~mask]) if np.any(~mask) else 128.0
+    blurred = cv2.medianBlur(temp.astype(np.uint8), kernel_size).astype(np.float32)
+    blurred[mask] = 0.0
     print(f"Step {current_step} completed in {time.time() - step_start:.2f}s")
     
     # Step 4: Subtract blurred from original (high-pass filter)
