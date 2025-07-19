@@ -179,19 +179,24 @@ def get_top_bottom_stafflines(stafflines: List[UnivariateSpline], left: Callable
     success = False
     top = None
 
-    for spline in stafflines:
+    for idx, spline in enumerate(stafflines):
         knots = spline.get_knots()
 
         left_x, left_y = func_intersection(spline, left)
-        distance = euclidean((left_x, left_y), (knots[0], spline(knots[0])))
-
-        if distance > max_dist:
-            continue
+        distance_left = euclidean((left_x, left_y), (knots[0], spline(knots[0])))
 
         right_x, right_y = func_intersection(spline, right)
-        distance = euclidean((right_x, right_y), (knots[-1], spline(knots[-1])))
+        distance_right = euclidean((right_x, right_y), (knots[-1], spline(knots[-1])))
 
-        if distance > max_dist:
+        if logging.getLogger().isEnabledFor(logging.INFO):
+            logging.info(
+                f"Staff line #{idx}: "
+                f"x_range=({knots[0]:.1f}, {knots[-1]:.1f})  "
+                f"left_dist={distance_left:.2f} (max={max_dist})  "
+                f"right_dist={distance_right:.2f} (max={max_dist})"
+            )
+
+        if distance_left > max_dist or distance_right > max_dist:
             continue
 
         if top is None:
@@ -202,6 +207,10 @@ def get_top_bottom_stafflines(stafflines: List[UnivariateSpline], left: Callable
         success = True
 
     if not success:
+        logging.info(
+            "No pair of staff lines satisfied the distance threshold "
+            f"(max_dist={max_dist}). Adjust 'max_dist' or check line detection."
+        )
         raise ValueError('Staff lines could not be detected!')
 
     return top, bottom
