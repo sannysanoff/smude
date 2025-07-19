@@ -199,26 +199,66 @@ def enhance_local_contrast_filter(image, radius):
     print(f"Step {current_step}/{total_steps}: Normalizing contrast...")
     step_start = time.time()
     
-    # Only consider non-masked pixels for normalization
+    # Extract central region (diameter = 1/4 of width) for min/max baseline
+    height, width = contrast_enhanced.shape[:2]
+    center_diameter = width // 4
+    center_radius = center_diameter // 2
+    center_y = height // 2
+    center_x = width // 2
+    
+    # Define central region bounds
+    y_min = max(0, center_y - center_radius)
+    y_max = min(height, center_y + center_radius)
+    x_min = max(0, center_x - center_radius)
+    x_max = min(width, center_x + center_radius)
+    
+    print(f"Using central region for normalization: {center_diameter}x{center_diameter} pixels")
+    print(f"Central region bounds: ({x_min},{y_min}) to ({x_max},{y_max})")
+    
+    # Extract central region and its mask
+    central_region = contrast_enhanced[y_min:y_max, x_min:x_max]
+    central_mask = mask[y_min:y_max, x_min:x_max]
+    
+    # Get min/max values from central region (excluding masked pixels)
     if len(image.shape) == 3:
-        non_masked_pixels = contrast_enhanced[~mask]
-        if len(non_masked_pixels) > 0:
-            min_val = np.min(non_masked_pixels)
-            max_val = np.max(non_masked_pixels)
+        central_non_masked_pixels = central_region[~central_mask]
+        if len(central_non_masked_pixels) > 0:
+            min_val = np.min(central_non_masked_pixels)
+            max_val = np.max(central_non_masked_pixels)
             if max_val > min_val:
-                # Normalize to 0-255 range
+                # Normalize entire image using central region's min/max
                 contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) / (max_val - min_val)) * 255
             else:
                 contrast_enhanced[~mask] = 128  # Neutral gray if no contrast
+        else:
+            # Fallback to global min/max if central region is all masked
+            non_masked_pixels = contrast_enhanced[~mask]
+            if len(non_masked_pixels) > 0:
+                min_val = np.min(non_masked_pixels)
+                max_val = np.max(non_masked_pixels)
+                if max_val > min_val:
+                    contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) / (max_val - min_val)) * 255
+                else:
+                    contrast_enhanced[~mask] = 128
     else:
-        non_masked_pixels = contrast_enhanced[~mask]
-        if len(non_masked_pixels) > 0:
-            min_val = np.min(non_masked_pixels)
-            max_val = np.max(non_masked_pixels)
+        central_non_masked_pixels = central_region[~central_mask]
+        if len(central_non_masked_pixels) > 0:
+            min_val = np.min(central_non_masked_pixels)
+            max_val = np.max(central_non_masked_pixels)
             if max_val > min_val:
                 contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) / (max_val - min_val)) * 255
             else:
                 contrast_enhanced[~mask] = 128
+        else:
+            # Fallback to global min/max if central region is all masked
+            non_masked_pixels = contrast_enhanced[~mask]
+            if len(non_masked_pixels) > 0:
+                min_val = np.min(non_masked_pixels)
+                max_val = np.max(non_masked_pixels)
+                if max_val > min_val:
+                    contrast_enhanced[~mask] = ((contrast_enhanced[~mask] - min_val) / (max_val - min_val)) * 255
+                else:
+                    contrast_enhanced[~mask] = 128
     
     print(f"Step {current_step} completed in {time.time() - step_start:.2f}s")
     
