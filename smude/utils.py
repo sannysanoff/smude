@@ -10,9 +10,17 @@ from typing import Callable, Optional, Tuple
 import numpy as np
 from scipy.integrate import quad
 from scipy.interpolate import UnivariateSpline, interp1d
-from scipy.misc import derivative
 from scipy.optimize import fsolve
 from typing_extensions import Protocol
+
+
+def numerical_derivative(func: Callable[[float], float], x0: float, *, n: int = 1, dx: float = 1e-6) -> float:
+    """Simple numerical derivative replacement for :func:`scipy.misc.derivative`."""
+    if n == 1:
+        return (func(x0 + dx) - func(x0 - dx)) / (2 * dx)
+    if n == 2:
+        return (func(x0 + dx) - 2 * func(x0) + func(x0 - dx)) / (dx ** 2)
+    raise ValueError("Only first and second order derivatives supported")
 
 
 class Derivable(Protocol):
@@ -224,7 +232,7 @@ def to_parametric_spline(spline: UnivariateSpline, x_start: Optional[float] = No
     def parametric_spline(t, d=0):
         x = interpolator(t)
         if d > 0:
-            x_dt = derivative(interpolator, t, d)
+            x_dt = numerical_derivative(interpolator, t, n=d)
         else:
             x_dt = x
         y_dt = spline(x, d)

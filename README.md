@@ -18,7 +18,7 @@ $ conda activate smude
 ```
 
 ### Using Python
-Clone this repository and install the package using the setup.py:
+Clone this repository and install the package with Python 3.12 using the setup.py:
 ```bash
 $ git clone https://github.com/sonovice/smude.git
 $ cd smude

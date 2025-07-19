@@ -16,19 +16,18 @@ setup(
         ],
     },
 
-    python_requires='>=3.8.5',
+    python_requires='>=3.12',
 
     install_requires=[
-        'numpy==1.19.1',
-        'torch==1.6.0',
-        'pytorch-lightning==0.9.0',
-        'scikit-image==0.17.2',
-        'scipy==1.5.2',
-        'torchvision==0.7.0',
-        'typing==3.7.4.3',
-        'typing_extensions==3.7.4.2',
-        'tqdm==4.48.2',
-        'requests==2.24.0',
-        'opencv-contrib-python==4.4.0.42'
+        'numpy>=1.25',
+        'torch>=2.3.0',
+        'pytorch-lightning>=2.2.0',
+        'scikit-image>=0.22',
+        'scipy>=1.11',
+        'torchvision>=0.18',
+        'typing_extensions>=4.10',
+        'tqdm>=4.48',
+        'requests>=2.31',
+        'opencv-contrib-python>=4.9'
     ],
 )

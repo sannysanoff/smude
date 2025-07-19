@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 from scipy import ndimage
 from skimage.exposure import equalize_adapthist
-from skimage.morphology import square
+from skimage.morphology import footprint_rectangle
 from skimage.segmentation import felzenszwalb
 
 
@@ -79,7 +79,9 @@ def extract_roi_mask(image: np.ndarray, min_hull_ratio: float = 0.4) -> Tuple[np
     image_gray = cv2.cvtColor(image_resized, cv2.COLOR_RGB2GRAY)
     image_eq = equalize_adapthist(image_gray) * 255
     image_canny = auto_canny(image_eq.astype(np.uint8))
-    image_canny = cv2.morphologyEx(image_canny, cv2.MORPH_DILATE, kernel=square(2))
+    image_canny = cv2.morphologyEx(
+        image_canny, cv2.MORPH_DILATE, kernel=footprint_rectangle((2, 2))
+    )
     image_segmented = felzenszwalb(image_canny, scale=1000, sigma=0.3, min_size=50)
 
     segment_sizes = np.bincount(image_segmented.flatten())
@@ -92,7 +94,9 @@ def extract_roi_mask(image: np.ndarray, min_hull_ratio: float = 0.4) -> Tuple[np
         hull = ndimage.binary_fill_holes(segment)
 
         # Removes areas that are only connected by few pixels to the hull
-        hull_opened = cv2.morphologyEx(hull.astype(np.uint8), cv2.MORPH_OPEN, kernel=square(20))
+        hull_opened = cv2.morphologyEx(
+            hull.astype(np.uint8), cv2.MORPH_OPEN, kernel=footprint_rectangle((20, 20))
+        )
 
         # Take center blob
         #blobs_segmented = measure.label(hull_opened)
@@ -113,7 +117,9 @@ def extract_roi_mask(image: np.ndarray, min_hull_ratio: float = 0.4) -> Tuple[np
     mask_fullsize = cv2.resize(hull.astype(np.uint8), (height, width))
 
     # Remove outer pixels so that dark residual pixels are removed
-    mask_fullsize = cv2.morphologyEx(mask_fullsize, cv2.MORPH_ERODE, kernel=square(25))
+    mask_fullsize = cv2.morphologyEx(
+        mask_fullsize, cv2.MORPH_ERODE, kernel=footprint_rectangle((25, 25))
+    )
     mask_ratio = np.sum(hull) / (size**2)
 
     return mask_fullsize, mask_ratio
