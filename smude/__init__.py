@@ -72,6 +72,7 @@ def enhance_local_contrast_filter(image, radius, *, verbose=False, **kwargs):
     kernel_size = 5
     if kernel_size % 2 == 0:          # ensure odd
         kernel_size += 1
+    logging.info(f'Median blur kernel size: {kernel_size}')
     # Fill masked pixels with the median of the non-masked ones
     median_val = np.median(gray[~mask]) if np.any(~mask) else 128.0
     temp[mask] = median_val
