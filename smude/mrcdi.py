@@ -179,22 +179,27 @@ def get_top_bottom_stafflines(stafflines: List[UnivariateSpline], left: Callable
     success = False
     top = None
 
+    logging.info(f"Testing {len(stafflines)} staff lines with max_dist={max_dist}")
     for idx, spline in enumerate(stafflines):
         knots = spline.get_knots()
 
         left_x, left_y = func_intersection(spline, left)
         distance_left = euclidean((left_x, left_y), (knots[0], spline(knots[0])))
+        logging.info(f'Reference left: func_intersection=({left_x:.2f},{left_y:.2f}), knots[0]={knots[0]:.2f}, spline(knots[0])={spline(knots[0]):.2f}')
 
         right_x, right_y = func_intersection(spline, right)
         distance_right = euclidean((right_x, right_y), (knots[-1], spline(knots[-1])))
 
-        if logging.getLogger().isEnabledFor(logging.INFO):
-            logging.info(
-                f"Staff line #{idx}: "
-                f"x_range=({knots[0]:.1f}, {knots[-1]:.1f})  "
-                f"left_dist={distance_left:.2f} (max={max_dist})  "
-                f"right_dist={distance_right:.2f} (max={max_dist})"
-            )
+        logging.info(
+            f"Staff line #{idx}: "
+            f"x_range=({knots[0]:.1f}, {knots[-1]:.1f})  "
+            f"left_dist={distance_left:.2f} (max={max_dist})  "
+            f"right_dist={distance_right:.2f} (max={max_dist})"
+        )
+        if distance_left <= max_dist and distance_right <= max_dist:
+            logging.info(f"  -> ACCEPTED: Both distances within threshold")
+        else:
+            logging.info(f"  -> REJECTED: Distance exceeds threshold")
 
         if distance_left > max_dist or distance_right > max_dist:
             min_left_seen  = min(min_left_seen  if 'min_left_seen'  in locals() else np.inf, distance_left)
@@ -203,6 +208,10 @@ def get_top_bottom_stafflines(stafflines: List[UnivariateSpline], left: Callable
 
         if top is None:
             top = (spline, left_x, right_x)
+            success = True
+        elif success:
+            bottom = (spline, left_x, right_x)
+            break
             continue
 
         bottom = (spline, left_x, right_x)
@@ -655,7 +664,7 @@ def generate_mesh(num_latitudes: int, num_longitudes: int, longitudes: List[Call
 def to_numpy_1d(arr):
     return np.array(arr).flatten()
 
-def mrcdi(input_img: np.ndarray, barlines_img: np.ndarray, upper_img: np.ndarray, lower_img: np.ndarray, background_img: np.ndarray, original_img: np.ndarray, optimize_f: bool = False, verbose: bool = False) -> np.ndarray:
+def mrcdi(input_img: np.ndarray, barlines_img: np.ndarray, upper_img: np.ndarray, lower_img: np.ndarray, background_img: np.ndarray, original_img: np.ndarray, optimize_f: bool = False, verbose: bool = False, max_dist: float = 40.0) -> np.ndarray:
     """
     Perform metric rectification on given sheet music images.
     The algorithm is based on the paper
@@ -704,13 +713,38 @@ def mrcdi(input_img: np.ndarray, barlines_img: np.ndarray, upper_img: np.ndarray
     logging.info('Getting top and bottom stafflines')
     step_size = w//num_longitudes
     stafflines = get_stafflines(upper_img, lower_img, step_size)
-    
+
     if verbose:
         logging.info(f'Staff line detection step size: {step_size}')
         logging.info(f'Found {len(stafflines)} staff lines')
+        # --- BEGIN DEBUG DRAW ---
+        h, w = input_img.shape[:2]
+        debug_img = np.zeros((h, w, 3), dtype=np.uint8)
+        # Draw barlines (left, right)
+        for x in range(w):
+            y_left = int(left(x)) if 0 <= left(x) < h else None
+            y_right = int(right(x)) if 0 <= right(x) < h else None
+            if y_left is not None:
+                cv.circle(debug_img, (x, y_left), 1, (0,255,0), -1)
+            if y_right is not None:
+                cv.circle(debug_img, (x, y_right), 1, (0,0,255), -1)
+        # Draw stafflines and knots
+        for idx, spline in enumerate(stafflines):
+            # Draw knots
+            knots = spline.get_knots()
+            for kx in knots:
+                ky = int(spline(kx))
+                if 0 <= kx < w and 0 <= ky < h:
+                    cv.circle(debug_img, (int(kx), int(ky)), 3, (255,0,0), -1)
+            # Draw spline
+            spline_pts = np.array([[int(x), int(spline(x))] for x in np.linspace(knots[0], knots[-1], 200)])
+            cv.polylines(debug_img, [spline_pts], isClosed=False, color=(255,255,255), thickness=1)
+        cv.imwrite('verbose_matching.jpg', debug_img)
+        logging.info('Saved verbose image: verbose_matching.jpg')
+        # --- END DEBUG DRAW ---
 
     logging.info('Identifying top and bottom staff lines')
-    top, bottom = get_top_bottom_stafflines(stafflines, left, right)
+    top, bottom = get_top_bottom_stafflines(stafflines, left, right, max_dist=max_dist)
     
     if verbose:
         top_knots = top[0].get_knots()
