@@ -255,7 +255,7 @@ class Smude():
 
         logging.info('Binarizing...')
         # Binarize ROI
-        binarized = binarize(enhanced, noise_reduction=self.noise_reduction, threshold=self.threshold)
+        binarized = binarize(enhanced, noise_reduction=self.noise_reduction, threshold=self.threshold, verbose=self.verbose)
 
         if self.verbose:
             self._save_verbose_image(binarized * 255, 'binarized')

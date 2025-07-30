@@ -7,7 +7,7 @@ from skimage.morphology import remove_small_holes
 from skimage.segmentation import flood_fill
 
 #@profile
-def binarize(image: np.ndarray, holes_threshold: float = 20, noise_reduction: dict = None) -> np.ndarray:
+def binarize(image: np.ndarray, holes_threshold: float = 20, noise_reduction: dict = None, verbose: bool = False) -> np.ndarray:
     """
     Binarize image using Sauvola algorithm.
 
@@ -43,6 +43,11 @@ def binarize(image: np.ndarray, holes_threshold: float = 20, noise_reduction: di
     # Threshold using Sauvola algorithm
     logging.info('Applying Sauvola threshold')
     binary_sauvola = cv2.ximgproc.niBlackThreshold(image_eq, 255, k=0.25, blockSize=51, type=cv2.THRESH_BINARY, binarizationMethod=cv2.ximgproc.BINARIZATION_SAUVOLA)
+    
+    # Save intermediate image after Sauvola threshold
+    if verbose:
+        cv2.imwrite('verbose_sauvola_threshold.jpg', binary_sauvola)
+        logging.info('Saved verbose image: verbose_sauvola_threshold.jpg')
 
     # Remove small objects
     #binary_cleaned = 1.0 * remove_small_holes(binary_sauvola, area_threshold=holes_threshold)
@@ -51,6 +56,11 @@ def binarize(image: np.ndarray, holes_threshold: float = 20, noise_reduction: di
     logging.info('Removing borders using flood fill')
     binary_sauvola = flood_fill(binary_sauvola, (0, 0), 0)
     binary_sauvola = flood_fill(binary_sauvola, (0, 0), 1)
+    
+    # Save intermediate image after border removal
+    if verbose:
+        cv2.imwrite('verbose_after_border_removal.jpg', binary_sauvola)
+        logging.info('Saved verbose image: verbose_after_border_removal.jpg')
 
     if noise_reduction:
         logging.info('Applying noise reduction')
