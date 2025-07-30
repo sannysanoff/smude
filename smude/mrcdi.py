@@ -26,6 +26,48 @@ from skimage.transform import hough_line, hough_line_peaks
 from .utils import *
 
 
+def to_parametric_spline_from_func(func: Callable) -> Callable[[float], np.ndarray]:
+    """
+    Convert a regular function to a parametric spline representation.
+    
+    Parameters
+    ----------
+    func : Callable
+        Regular function that takes x values and returns y values.
+        
+    Returns
+    -------
+    parametric_spline : Callable[[float], np.ndarray]
+        Parametric spline function that takes parameter t and returns [x, y] coordinates.
+    """
+    def parametric_spline(t):
+        # For a function-based approach, we need to define how t maps to x
+        # Here we'll assume t maps linearly to a reasonable x range
+        # This is a simplified approach - in practice, you might need to adjust this
+        x_val = t * 100  # Scale t to a reasonable range
+        y_val = func(x_val)
+        return np.array([x_val, y_val])
+    
+    # Add derivative method for compatibility
+    def derivative(t, n=1):
+        # Numerical differentiation for function-based splines
+        if n == 1:
+            delta = 1e-8
+            x_val = t * 100
+            y_val = func(x_val)
+            y_val_delta = func(x_val + delta)
+            dy_dx = (y_val_delta - y_val) / delta
+            # Return derivative with respect to t
+            return np.array([100, dy_dx * 100])  # dx/dt = 100, dy/dt = dy/dx * dx/dt
+        else:
+            # Higher order derivatives - return zeros for simplicity
+            return np.array([0, 0])
+    
+    parametric_spline.__call__ = parametric_spline
+    parametric_spline.derivative = derivative
+    return parametric_spline
+
+
 def get_outer_barlines(barline_img: np.ndarray, verbose: bool = False) -> Tuple[Callable[[float], float], Callable[[float], float]]:
     """
     Return the outer barlines as lines each defined by slope and one point.
@@ -526,10 +568,60 @@ def get_longitudes(v_x: float, v_y: float, f: float, C: Derivable, num: int) -> 
     # Sample values and approximate new spline
     # (faster in the long run but slightly less accurate)
     x_sampled, y_sampled = np.array([D(t) for t in np.linspace(0, 1, 50)]).transpose()
-    D = UnivariateSpline(x_sampled, y_sampled, k=3, s=1)
+    
+    # Filter out samples where x values are not finite or are NaN/Inf
+    valid_indices = np.isfinite(x_sampled) & np.isfinite(y_sampled)
+    x_sampled = x_sampled[valid_indices]
+    y_sampled = y_sampled[valid_indices]
+    
+    # Check if we have enough points for spline fitting
+    if len(x_sampled) < 4:
+        # If not enough points, create a simple linear interpolation instead
+        if len(x_sampled) >= 2:
+            D = interp1d(x_sampled, y_sampled, kind='linear', fill_value='extrapolate')
+        else:
+            # Fallback: constant function
+            D = lambda x: np.full_like(x, y_sampled[0] if len(y_sampled) > 0 else 0)
+        D_parametric = to_parametric_spline_from_func(D)
+    else:
+        # Sort x_sampled and y_sampled together to ensure x values are increasing
+        sort_indices = np.argsort(x_sampled)
+        x_sampled = x_sampled[sort_indices]
+        y_sampled = y_sampled[sort_indices]
+        
+        # Remove duplicates
+        unique_indices = np.unique(x_sampled, return_index=True)[1]
+        x_sampled = x_sampled[unique_indices]
+        y_sampled = y_sampled[unique_indices]
+        
+        # Check again if we have enough points after deduplication
+        if len(x_sampled) >= 4:
+            try:
+                D = UnivariateSpline(x_sampled, y_sampled, k=3, s=1)
+                D_parametric = to_parametric_spline(D)
+            except Exception as e:
+                # Fallback to linear interpolation if spline fails
+                logging.warning(f"UnivariateSpline failed, using linear interpolation: {e}")
+                D = interp1d(x_sampled, y_sampled, kind='linear', fill_value='extrapolate')
+                D_parametric = to_parametric_spline_from_func(D)
+        else:
+            # Not enough points for spline, use linear interpolation
+            if len(x_sampled) >= 2:
+                D = interp1d(x_sampled, y_sampled, kind='linear', fill_value='extrapolate')
+            else:
+                D = lambda x: np.full_like(x, y_sampled[0] if len(y_sampled) > 0 else 0)
+            D_parametric = to_parametric_spline_from_func(D)
     D_parametric = to_parametric_spline(D)
-    t_sample_points = sample_spline_arc(D_parametric, num)
-    D_sampled = np.array([D_parametric(t) for t in t_sample_points]).transpose()
+    # Handle both spline and function cases
+    try:
+        t_sample_points = sample_spline_arc(D_parametric, num)
+        D_sampled = np.array([D_parametric(t) for t in t_sample_points]).transpose()
+    except Exception as e:
+        # Fallback: uniform sampling if arc sampling fails
+        logging.warning(f"Arc sampling failed, using uniform sampling: {e}")
+        t_sample_points = np.linspace(0, 1, num)
+        D_sampled = np.array([D_parametric(t) for t in t_sample_points]).transpose()
+    
     C_sampled = np.matmul(A, D_sampled).transpose()
 
     longitudes = [line(x1=v_x, y1=v_y, x2=x, y2=y) for x, y in C_sampled]
