@@ -54,7 +54,7 @@ def binarize(image: np.ndarray, holes_threshold: float = 20, noise_reduction: di
     #binary_cleaned = 1.0 * remove_small_holes(binary_sauvola, area_threshold=holes_threshold)
 
     # Remove thick black border (introduced during thresholding)
-    if not self.skip_border_removal:
+    if not skip_border_removal:
         logging.info('Removing borders using flood fill')
         binary_sauvola = flood_fill(binary_sauvola, (0, 0), 0)
         binary_sauvola = flood_fill(binary_sauvola, (0, 0), 1)
