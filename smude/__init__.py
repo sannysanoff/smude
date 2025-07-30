@@ -454,14 +454,7 @@ def main():
     parser.add_argument('--use-gpu', help='Use GPU acceleration for neural network inference (default: disabled)', action='store_true')
     parser.add_argument('--verbose', help='Enable verbose logging with intermediate image outputs (default: disabled)', action='store_true')
     parser.add_argument('--noise-reduction', 
-                       help='''Noise reduction settings as comma-separated key=value pairs. 
-                            Available parameters:
-                            - hole_removal: Hole removal threshold multiplier (range: 0.0-5.0, default: 1.0)
-                            - opening_strength: Opening operation kernel size multiplier (range: 0.0-5.0, default: 1.0) 
-                            - closing_strength: Closing operation kernel size multiplier (range: 0.0-5.0, default: 1.0)
-                            - median_strength: Median filter kernel size multiplier (range: 0.0-5.0, default: 1.0)
-                            Example: hole_removal=1.5,opening_strength=2.0,median_strength=0.8
-                            Set to 0 to disable specific operations''', 
+                       help='Noise reduction settings as comma-separated key=value pairs. Available parameters: hole_removal: Hole removal threshold multiplier (range: 0.0-5.0, default: 1.0), opening_strength: Opening operation kernel size multiplier (range: 0.0-5.0, default: 1.0), closing_strength: Closing operation kernel size multiplier (range: 0.0-5.0, default: 1.0), median_strength: Median filter kernel size multiplier (range: 0.0-5.0, default: 1.0). Example: hole_removal=1.5,opening_strength=2.0,median_strength=0.8. Set to 0 to disable specific operations', 
                        default=None)
     parser.add_argument('--max-dist', type=float, default=40.0, help='Maximum allowed distance between staff lines for detection (default: 40.0)')
     parser.add_argument('--threshold', type=int, default=128, help='Threshold value for binarization (default: 128)')
