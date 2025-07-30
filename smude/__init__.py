@@ -114,7 +114,7 @@ logger = get_logger()
 
 
 class Smude():
-    def __init__(self, use_gpu: bool = False, binarize_output: bool = True, verbose: bool = False, noise_reduction: dict = None, max_dist: float = 40.0, threshold: int = 128, sauvola_k: float = 0.25, skip_border_removal: bool = False, grow: int = 0, spline_threshold: int = 80, pad: int = 0):
+    def __init__(self, use_gpu: bool = False, binarize_output: bool = True, verbose: bool = False, noise_reduction: dict = None, max_dist: float = 40.0, threshold: int = 128, sauvola_k: float = 0.25, skip_border_removal: bool = False, grow: int = 0, spline_threshold: int = 80, pad: int = 0, roi_threshold: float = 0.4):
         """
         Instantiate new Smude object for sheet music dewarping.
 
@@ -136,6 +136,8 @@ class Smude():
             Maximum allowed distance between staff lines for detection (default: 40.0).
         pad : int, optional
             Amount of padding (in pixels) to add to input image before processing (default: 0).
+        roi_threshold : float, optional
+            Minimum ratio for ROI detection. Lower values allow smaller ROIs (default: 0.4).
         """
 
         super().__init__()
@@ -150,6 +152,7 @@ class Smude():
         self.grow = grow
         self.spline_threshold = spline_threshold
         self.pad = pad
+        self.roi_threshold = roi_threshold
 
         # Load Deep Learning model
         dirname = os.path.dirname(__file__)
@@ -224,7 +227,7 @@ class Smude():
             self._save_verbose_image(image, 'input')
 
         logging.info('Extracting ROI...')
-        roi_mask, mask_ratio = extract_roi_mask(image)
+        roi_mask, mask_ratio = extract_roi_mask(image, min_hull_ratio=self.roi_threshold, verbose=self.verbose)
 
         if self.verbose:
             self._save_verbose_image(roi_mask * 255, 'roi_mask')
@@ -493,6 +496,7 @@ def main():
     parser.add_argument('--grow', type=int, default=0, help='Grow black pixels by n pixels in manhattan distance to remove tiny white dots (default: 0)')
     parser.add_argument('--spline-threshold', type=int, default=80, help='Keep most smooth splines (1-99%%, default: 80)')
     parser.add_argument('--pad', type=int, default=0, help='Pad input image with n pixels of white space (default: 0)')
+    parser.add_argument('--roi-threshold', type=float, default=0.4, help='Minimum ratio for ROI detection. Lower values allow smaller ROIs (default: 0.4)')
 
     args = parser.parse_args()
 
@@ -508,7 +512,7 @@ def main():
             print("Error: Invalid noise reduction format. Use key=value pairs separated by commas.")
             exit(1)
 
-    smude = Smude(use_gpu=args.use_gpu, binarize_output=args.no_binarization, verbose=args.verbose, noise_reduction=noise_reduction, max_dist=args.max_dist, threshold=args.threshold, sauvola_k=args.sauvola_k, skip_border_removal=args.skip_border_removal, grow=args.grow, spline_threshold=args.spline_threshold, pad=args.pad)
+    smude = Smude(use_gpu=args.use_gpu, binarize_output=args.no_binarization, verbose=args.verbose, noise_reduction=noise_reduction, max_dist=args.max_dist, threshold=args.threshold, sauvola_k=args.sauvola_k, skip_border_removal=args.skip_border_removal, grow=args.grow, spline_threshold=args.spline_threshold, pad=args.pad, roi_threshold=args.roi_threshold)
 
     image = imread(args.infile)
     result = smude.process(image)

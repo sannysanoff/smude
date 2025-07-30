@@ -68,7 +68,7 @@ def extract_roi_mask(image: np.ndarray, min_hull_ratio: float = 0.4, verbose: bo
     mask_fullsize : np.ndarray
         Binary image respresenting the ROI. White pixels (1) = ROI.
     mask_ratio : float
-        Pixel ratio (widht * height) / ROI.
+        Pixel ratio (width * height) / ROI.
 
     Raises
     ------
