@@ -525,7 +525,15 @@ def get_longitudes(v_x: float, v_y: float, f: float, C: Derivable, num: int) -> 
 
     # Sample values and approximate new spline
     # (faster in the long run but slightly less accurate)
-    x_sampled, y_sampled = np.array([D(t) for t in np.linspace(0, 1, 50)]).transpose()
+    sampled_points = np.array([D(t) for t in np.linspace(0, 1, 50)])
+    x_sampled, y_sampled = sampled_points.transpose()
+    
+    # Check if x_sampled is strictly increasing - if not, skip this spline
+    if not np.all(np.diff(x_sampled) > 0):
+        # If x values are not increasing, we cannot create a valid spline
+        # Return empty results
+        return [], None
+    
     D = UnivariateSpline(x_sampled, y_sampled, k=3, s=1)
     D_parametric = to_parametric_spline(D)
     t_sample_points = sample_spline_arc(D_parametric, num)
@@ -858,6 +866,10 @@ def mrcdi(input_img: np.ndarray, barlines_img: np.ndarray, upper_img: np.ndarray
     
     if verbose:
         logging.info(f'Generated {len(longitudes)} longitude lines')
+    
+    # Check if we have valid longitudes
+    if not longitudes or D_parametric is None:
+        raise ValueError("Could not generate valid longitudes - x values not in increasing order")
 
     logging.info('Computing aspect ratio')
     ratio = compute_aspect_ratio(v_x, v_y, f, h, w, get_latitude_parametric(mu_top), get_latitude_parametric(mu_bottom), D_parametric)
