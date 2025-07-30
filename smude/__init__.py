@@ -211,6 +211,10 @@ class Smude():
                 padding = ((pad_width, pad_width), (pad_width, pad_width))
             image = np.pad(image, padding, mode='constant', constant_values=255)
             
+            # Save padded image if verbose mode is enabled
+            if self.verbose:
+                self._save_verbose_image(image, 'padded_input')
+            
         original_shape = image.shape[:2]
 
         if len(image.shape) < 3:
