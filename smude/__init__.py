@@ -21,7 +21,7 @@ from .roi import extract_roi_mask, get_border
 from .utils import get_logger
 
 # --- Local-contrast enhancement helper ---------------------------------
-def enhance_local_contrast_filter(image, radius, *, verbose=False, **kwargs):
+def enhance_local_contrast_filter(image, radius, *, verbose=False, threshold: int = 128):
     """Enhance local contrast using median-blur subtraction with mask preservation."""
     import cv2
     import numpy as np
@@ -97,7 +97,7 @@ def enhance_local_contrast_filter(image, radius, *, verbose=False, **kwargs):
 
     # Step 5: threshold
     current_step += 1
-    threshold = kwargs.get('threshold', 128)
+    # use the threshold parameter provided to the function
     binary = np.where(contrast_enhanced < threshold, 1, 254)
     binary[mask] = 0
     _save_step(binary, f'05_binary')
@@ -114,7 +114,7 @@ logger = get_logger()
 
 
 class Smude():
-    def __init__(self, use_gpu: bool = False, binarize_output: bool = True, verbose: bool = False, noise_reduction: dict = None):
+    def __init__(self, use_gpu: bool = False, binarize_output: bool = True, verbose: bool = False, noise_reduction: dict = None, max_dist: float = 40.0, threshold: int = 128):
         """
         Instantiate new Smude object for sheet music dewarping.
 
@@ -130,8 +130,10 @@ class Smude():
             Dictionary controlling noise reduction aggressiveness during binarization.
             Keys: 'hole_removal', 'opening_strength', 'closing_strength', 'median_strength'
             Values: float multipliers (1.0 = default strength, 0 = disabled), by default None.
-        checkpoint_path : str, optional
-            Path to a trained U-Net model, by default the included 'model.ckpt'.
+        threshold : int, optional
+            Threshold value for binarization (default: 128).
+        max_dist : float, optional
+            Maximum allowed distance between staff lines for detection (default: 40.0).
         """
 
         super().__init__()
@@ -139,7 +141,8 @@ class Smude():
         self.binarize_output = binarize_output
         self.verbose = verbose
         self.noise_reduction = noise_reduction
-        self.step_counter = 9          # was 0
+        self.threshold = threshold
+        self.max_dist = max_dist
 
         # Load Deep Learning model
         dirname = os.path.dirname(__file__)
@@ -219,7 +222,7 @@ class Smude():
 
         logging.info('Enhancing local contrast (step 10)...')
         enhanced = enhance_local_contrast_filter(
-            result, radius=5, threshold=128, verbose=self.verbose
+            result, radius=5, threshold=self.threshold, verbose=self.verbose
         )
         if self.verbose:
             self._save_verbose_image(enhanced, 'enhanced_local_contrast')
@@ -286,7 +289,8 @@ class Smude():
             background_img = background,
             original_img = binarized,
             optimize_f = optimize_f,
-            verbose = self.verbose
+            verbose = self.verbose,
+            max_dist = self.max_dist
         )
         
         if self.binarize_output:
@@ -409,6 +413,9 @@ def main():
                             Example: hole_removal=1.5,opening_strength=2.0,median_strength=0.8
                             Set to 0 to disable specific operations''', 
                        default=None)
+    parser.add_argument('--max-dist', type=float, default=40.0, help='Maximum allowed distance between staff lines for detection (default: 40.0)')
+    parser.add_argument('--threshold', type=int, default=128, help='Threshold value for binarization (default: 128)')
+
     args = parser.parse_args()
 
     # Parse noise reduction parameters
@@ -423,7 +430,7 @@ def main():
             print("Error: Invalid noise reduction format. Use key=value pairs separated by commas.")
             exit(1)
 
-    smude = Smude(use_gpu=args.use_gpu, binarize_output=args.no_binarization, verbose=args.verbose, noise_reduction=noise_reduction)
+    smude = Smude(use_gpu=args.use_gpu, binarize_output=args.no_binarization, verbose=args.verbose, noise_reduction=noise_reduction, max_dist=args.max_dist, threshold=args.threshold)
 
     image = imread(args.infile)
     result = smude.process(image)
