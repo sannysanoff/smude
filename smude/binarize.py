@@ -43,7 +43,7 @@ def binarize(image: np.ndarray, holes_threshold: float = 20, noise_reduction: di
 
     # Threshold using Sauvola algorithm
     logging.info('Applying Sauvola threshold')
-    binary_sauvola = cv2.ximgproc.niBlackThreshold(image_eq, 255, k=0.25, blockSize=51, type=cv2.THRESH_BINARY, binarizationMethod=cv2.ximgproc.BINARIZATION_SAUVOLA, thresh=threshold)
+    binary_sauvola = cv2.ximgproc.niBlackThreshold(image_eq, 255, k=0.25, blockSize=51, type=cv2.THRESH_BINARY, binarizationMethod=cv2.ximgproc.BINARIZATION_SAUVOLA)
     
     # Save intermediate image after Sauvola threshold
     if verbose:
