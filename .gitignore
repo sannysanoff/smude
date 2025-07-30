@@ -137,3 +137,7 @@ result.png
 # IDEs
 .vscode
 .idea
+.aider*
+
+# Crush directory
+.crush/
