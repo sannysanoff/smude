@@ -143,6 +143,15 @@ def get_stafflines(upper_img: np.ndarray, lower_img: np.ndarray, step_size: int)
 
     # Sort splines from top to bottom
     splines.sort(key=lambda i : i(i.get_knots()[0]))
+    
+    # Filter splines based on smoothness threshold
+    if spline_threshold < 100:
+        # Calculate how many splines to keep based on threshold
+        num_splines = len(splines)
+        num_to_keep = max(1, int(num_splines * spline_threshold / 100))
+        splines = splines[:num_to_keep]
+        if verbose:
+            logging.info(f'Spline filtering: kept {num_to_keep}/{num_splines} splines (threshold: {spline_threshold}%)')
 
     return splines
 
@@ -664,7 +673,7 @@ def generate_mesh(num_latitudes: int, num_longitudes: int, longitudes: List[Call
 def to_numpy_1d(arr):
     return np.array(arr).flatten()
 
-def mrcdi(input_img: np.ndarray, barlines_img: np.ndarray, upper_img: np.ndarray, lower_img: np.ndarray, background_img: np.ndarray, original_img: np.ndarray, optimize_f: bool = False, verbose: bool = False, max_dist: float = 40.0) -> np.ndarray:
+def mrcdi(input_img: np.ndarray, barlines_img: np.ndarray, upper_img: np.ndarray, lower_img: np.ndarray, background_img: np.ndarray, original_img: np.ndarray, optimize_f: bool = False, verbose: bool = False, max_dist: float = 40.0, spline_threshold: int = 80) -> np.ndarray:
     """
     Perform metric rectification on given sheet music images.
     The algorithm is based on the paper

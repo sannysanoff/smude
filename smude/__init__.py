@@ -114,7 +114,7 @@ logger = get_logger()
 
 
 class Smude():
-    def __init__(self, use_gpu: bool = False, binarize_output: bool = True, verbose: bool = False, noise_reduction: dict = None, max_dist: float = 40.0, threshold: int = 128, sauvola_k: float = 0.25, skip_border_removal: bool = False, grow: int = 0):
+    def __init__(self, use_gpu: bool = False, binarize_output: bool = True, verbose: bool = False, noise_reduction: dict = None, max_dist: float = 40.0, threshold: int = 128, sauvola_k: float = 0.25, skip_border_removal: bool = False, grow: int = 0, spline_threshold: int = 80):
         """
         Instantiate new Smude object for sheet music dewarping.
 
@@ -146,6 +146,7 @@ class Smude():
         self.sauvola_k = sauvola_k
         self.skip_border_removal = skip_border_removal
         self.grow = grow
+        self.spline_threshold = spline_threshold
 
         # Load Deep Learning model
         dirname = os.path.dirname(__file__)
@@ -338,7 +339,8 @@ class Smude():
             original_img = binarized,
             optimize_f = optimize_f,
             verbose = self.verbose,
-            max_dist = self.max_dist
+            max_dist = self.max_dist,
+            spline_threshold = self.spline_threshold
         )
         
         if self.binarize_output:
@@ -466,6 +468,7 @@ def main():
     parser.add_argument('--sauvola-k', type=float, default=0.25, help='Sauvola algorithm k parameter for niBlackThreshold (default: 0.25)')
     parser.add_argument('--skip-border-removal', help='Skip border removal using flood fill', action='store_true')
     parser.add_argument('--grow', type=int, default=0, help='Grow black pixels by n pixels in manhattan distance to remove tiny white dots (default: 0)')
+    parser.add_argument('--spline-threshold', type=int, default=80, help='Keep most smooth splines (1-99%, default: 80)')
 
     args = parser.parse_args()
 
@@ -481,7 +484,7 @@ def main():
             print("Error: Invalid noise reduction format. Use key=value pairs separated by commas.")
             exit(1)
 
-    smude = Smude(use_gpu=args.use_gpu, binarize_output=args.no_binarization, verbose=args.verbose, noise_reduction=noise_reduction, max_dist=args.max_dist, threshold=args.threshold, sauvola_k=args.sauvola_k, skip_border_removal=args.skip_border_removal, grow=args.grow)
+    smude = Smude(use_gpu=args.use_gpu, binarize_output=args.no_binarization, verbose=args.verbose, noise_reduction=noise_reduction, max_dist=args.max_dist, threshold=args.threshold, sauvola_k=args.sauvola_k, skip_border_removal=args.skip_border_removal, grow=args.grow, spline_threshold=args.spline_threshold)
 
     image = imread(args.infile)
     result = smude.process(image)
