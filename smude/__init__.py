@@ -114,7 +114,7 @@ logger = get_logger()
 
 
 class Smude():
-    def __init__(self, use_gpu: bool = False, binarize_output: bool = True, verbose: bool = False, noise_reduction: dict = None, max_dist: float = 40.0, threshold: int = 128):
+    def __init__(self, use_gpu: bool = False, binarize_output: bool = True, verbose: bool = False, noise_reduction: dict = None, max_dist: float = 40.0, threshold: int = 128, sauvola_k: float = 0.25):
         """
         Instantiate new Smude object for sheet music dewarping.
 
@@ -143,6 +143,7 @@ class Smude():
         self.noise_reduction = noise_reduction
         self.threshold = threshold
         self.max_dist = max_dist
+        self.sauvola_k = sauvola_k
 
         # Load Deep Learning model
         dirname = os.path.dirname(__file__)
@@ -255,7 +256,7 @@ class Smude():
 
         logging.info('Binarizing...')
         # Binarize ROI
-        binarized = binarize(enhanced, noise_reduction=self.noise_reduction, threshold=self.threshold, verbose=self.verbose)
+        binarized = binarize(enhanced, noise_reduction=self.noise_reduction, threshold=self.threshold, verbose=self.verbose, sauvola_k=self.sauvola_k)
 
         if self.verbose:
             self._save_verbose_image(binarized * 255, 'binarized')
@@ -441,6 +442,7 @@ def main():
                        default=None)
     parser.add_argument('--max-dist', type=float, default=40.0, help='Maximum allowed distance between staff lines for detection (default: 40.0)')
     parser.add_argument('--threshold', type=int, default=128, help='Threshold value for binarization (default: 128)')
+    parser.add_argument('--sauvola-k', type=float, default=0.25, help='Sauvola algorithm k parameter for niBlackThreshold (default: 0.25)')
 
     args = parser.parse_args()
 
@@ -456,7 +458,7 @@ def main():
             print("Error: Invalid noise reduction format. Use key=value pairs separated by commas.")
             exit(1)
 
-    smude = Smude(use_gpu=args.use_gpu, binarize_output=args.no_binarization, verbose=args.verbose, noise_reduction=noise_reduction, max_dist=args.max_dist, threshold=args.threshold)
+    smude = Smude(use_gpu=args.use_gpu, binarize_output=args.no_binarization, verbose=args.verbose, noise_reduction=noise_reduction, max_dist=args.max_dist, threshold=args.threshold, sauvola_k=args.sauvola_k)
 
     image = imread(args.infile)
     result = smude.process(image)
