@@ -146,7 +146,7 @@ def get_stafflines(upper_img: np.ndarray, lower_img: np.ndarray, step_size: int,
     
     # Filter splines based on waviness threshold
     if spline_threshold < 100:
-        # Calculate waviness for each spline (second derivative normalized by length)
+        # Calculate waviness for each spline (sum of absolute second derivative normalized by length)
         waviness_scores = []
         for spline in splines:
             knots = spline.get_knots()
@@ -162,7 +162,7 @@ def get_stafflines(upper_img: np.ndarray, lower_img: np.ndarray, step_size: int,
             # Calculate arc length element
             arc_length_elements = np.sqrt(1 + first_derivatives**2)
             
-            # Integrate second derivative weighted by arc length (waviness)
+            # Integrate absolute second derivative weighted by arc length (waviness)
             waviness = np.trapz(np.abs(second_derivatives) * arc_length_elements, x_vals)
             
             # Normalize by spline length to get average waviness
