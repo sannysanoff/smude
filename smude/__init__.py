@@ -114,7 +114,7 @@ logger = get_logger()
 
 
 class Smude():
-    def __init__(self, use_gpu: bool = False, binarize_output: bool = True, verbose: bool = False, noise_reduction: dict = None, max_dist: float = 40.0, threshold: int = 128, sauvola_k: float = 0.25, skip_border_removal: bool = False, grow: int = 0, spline_threshold: int = 80):
+    def __init__(self, use_gpu: bool = False, binarize_output: bool = True, verbose: bool = False, noise_reduction: dict = None, max_dist: float = 40.0, threshold: int = 128, sauvola_k: float = 0.25, skip_border_removal: bool = False, grow: int = 0, spline_threshold: int = 80, pad: int = 0):
         """
         Instantiate new Smude object for sheet music dewarping.
 
@@ -134,6 +134,8 @@ class Smude():
             Threshold value for binarization (default: 128).
         max_dist : float, optional
             Maximum allowed distance between staff lines for detection (default: 40.0).
+        pad : int, optional
+            Amount of padding (in pixels) to add to input image before processing (default: 0).
         """
 
         super().__init__()
@@ -147,6 +149,7 @@ class Smude():
         self.skip_border_removal = skip_border_removal
         self.grow = grow
         self.spline_threshold = spline_threshold
+        self.pad = pad
 
         # Load Deep Learning model
         dirname = os.path.dirname(__file__)
@@ -197,6 +200,18 @@ class Smude():
         np.ndarray
             Dewarped sheet music image.
         """
+
+        # Add padding if requested
+        if self.pad > 0:
+            logging.info(f'Adding {self.pad} pixels of padding to input image')
+            pad_width = self.pad
+            if len(image.shape) == 3:
+                padding = ((pad_width, pad_width), (pad_width, pad_width), (0, 0))
+            else:
+                padding = ((pad_width, pad_width), (pad_width, pad_width))
+            image = np.pad(image, padding, mode='constant', constant_values=255)
+            
+        original_shape = image.shape[:2]
 
         if len(image.shape) < 3:
             image = gray2rgb(image)
@@ -377,6 +392,17 @@ class Smude():
                 dewarped.append(channel)
             dewarped = np.stack(dewarped, axis=2)
         
+        # Remove padding if it was added
+        if self.pad > 0:
+            logging.info(f'Removing {self.pad} pixels of padding from final image')
+            if self.binarize_output:
+                dewarped = dewarped[self.pad:-self.pad, self.pad:-self.pad]
+            else:
+                if len(dewarped.shape) == 3:
+                    dewarped = dewarped[self.pad:-self.pad, self.pad:-self.pad, :]
+                else:
+                    dewarped = dewarped[self.pad:-self.pad, self.pad:-self.pad]
+        
         if self.verbose:
             self._save_verbose_image(dewarped, 'final_result')
             
@@ -462,6 +488,7 @@ def main():
     parser.add_argument('--skip-border-removal', help='Skip border removal using flood fill', action='store_true')
     parser.add_argument('--grow', type=int, default=0, help='Grow black pixels by n pixels in manhattan distance to remove tiny white dots (default: 0)')
     parser.add_argument('--spline-threshold', type=int, default=80, help='Keep most smooth splines (1-99%%, default: 80)')
+    parser.add_argument('--pad', type=int, default=0, help='Pad input image with n pixels of white space (default: 0)')
 
     args = parser.parse_args()
 
@@ -477,7 +504,7 @@ def main():
             print("Error: Invalid noise reduction format. Use key=value pairs separated by commas.")
             exit(1)
 
-    smude = Smude(use_gpu=args.use_gpu, binarize_output=args.no_binarization, verbose=args.verbose, noise_reduction=noise_reduction, max_dist=args.max_dist, threshold=args.threshold, sauvola_k=args.sauvola_k, skip_border_removal=args.skip_border_removal, grow=args.grow, spline_threshold=args.spline_threshold)
+    smude = Smude(use_gpu=args.use_gpu, binarize_output=args.no_binarization, verbose=args.verbose, noise_reduction=noise_reduction, max_dist=args.max_dist, threshold=args.threshold, sauvola_k=args.sauvola_k, skip_border_removal=args.skip_border_removal, grow=args.grow, spline_threshold=args.spline_threshold, pad=args.pad)
 
     image = imread(args.infile)
     result = smude.process(image)
