@@ -220,6 +220,7 @@ def get_top_bottom_stafflines(stafflines: List[UnivariateSpline], left: Callable
 
     success = False
     top = None
+    valid_lines_found = 0
 
     logging.info(f"Testing {len(stafflines)} staff lines with max_dist={max_dist}")
     for idx, spline in enumerate(stafflines):
@@ -241,23 +242,23 @@ def get_top_bottom_stafflines(stafflines: List[UnivariateSpline], left: Callable
         
         if distance_left <= max_dist and distance_right <= max_dist:
             logging.info(f"  -> ACCEPTED: Both distances within threshold")
+            valid_lines_found += 1
+            
+            if top is None:
+                top = (spline, left_x, right_x)
+                success = True
+            elif success:
+                bottom = (spline, left_x, right_x)
+                logging.info(f"  -> SELECTED as bottom line (pair found)")
+                break
+            else:
+                bottom = (spline, left_x, right_x)
+                success = True
         else:
             logging.info(f"  -> REJECTED: Distance exceeds threshold")
-
-        if distance_left > max_dist or distance_right > max_dist:
             min_left_seen  = min(min_left_seen  if 'min_left_seen'  in locals() else np.inf, distance_left)
             min_right_seen = min(min_right_seen if 'min_right_seen' in locals() else np.inf, distance_right)
             continue
-
-        if top is None:
-            top = (spline, left_x, right_x)
-            success = True
-        elif success:
-            bottom = (spline, left_x, right_x)
-            break
-
-        bottom = (spline, left_x, right_x)
-        success = True
 
     if not success:
         min_left = min_left_seen if 'min_left_seen' in locals() else np.inf
