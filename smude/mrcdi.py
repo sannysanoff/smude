@@ -144,14 +144,47 @@ def get_stafflines(upper_img: np.ndarray, lower_img: np.ndarray, step_size: int,
     # Sort splines from top to bottom
     splines.sort(key=lambda i : i(i.get_knots()[0]))
     
-    # Filter splines based on smoothness threshold
+    # Filter splines based on waviness threshold
     if spline_threshold < 100:
-        # Calculate how many splines to keep based on threshold
+        # Calculate waviness for each spline (second derivative normalized by length)
+        waviness_scores = []
+        for spline in splines:
+            knots = spline.get_knots()
+            if len(knots) < 2:
+                waviness_scores.append(float('inf'))
+                continue
+                
+            # Sample the spline and its second derivative
+            x_vals = np.linspace(knots[0], knots[-1], 100)
+            second_derivatives = spline(x_vals, 2)  # Second derivative
+            first_derivatives = spline(x_vals, 1)   # First derivative
+            
+            # Calculate arc length element
+            arc_length_elements = np.sqrt(1 + first_derivatives**2)
+            
+            # Integrate second derivative weighted by arc length (waviness)
+            waviness = np.trapz(np.abs(second_derivatives) * arc_length_elements, x_vals)
+            
+            # Normalize by spline length to get average waviness
+            spline_length = np.trapz(arc_length_elements, x_vals)
+            if spline_length > 0:
+                normalized_waviness = waviness / spline_length
+            else:
+                normalized_waviness = float('inf')
+                
+            waviness_scores.append(normalized_waviness)
+        
+        # Sort splines by waviness (least wavy first)
+        sorted_indices = np.argsort(waviness_scores)
+        splines = [splines[i] for i in sorted_indices]
+        
+        # Keep the least wavy splines based on threshold
         num_splines = len(splines)
         num_to_keep = max(1, int(num_splines * spline_threshold / 100))
         splines = splines[:num_to_keep]
+        
         if verbose:
-            logging.info(f'Spline filtering: kept {num_to_keep}/{num_splines} splines (threshold: {spline_threshold}%)')
+            logging.info(f'Spline filtering: kept {num_to_keep}/{num_splines} least wavy splines (threshold: {spline_threshold}%)')
 
     return splines
 
