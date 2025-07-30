@@ -250,14 +250,19 @@ def get_top_bottom_stafflines(stafflines: List[UnivariateSpline], left: Callable
             elif success:
                 bottom = (spline, left_x, right_x)
                 logging.info(f"  -> SELECTED as bottom line (pair found)")
-                break
+                # Continue processing to log all lines, but we have our pair
+                continue
             else:
                 bottom = (spline, left_x, right_x)
                 success = True
         else:
             logging.info(f"  -> REJECTED: Distance exceeds threshold")
-            min_left_seen  = min(min_left_seen  if 'min_left_seen'  in locals() else np.inf, distance_left)
-            min_right_seen = min(min_right_seen if 'min_right_seen' in locals() else np.inf, distance_right)
+            if 'min_left_seen' not in locals():
+                min_left_seen = np.inf
+            if 'min_right_seen' not in locals():
+                min_right_seen = np.inf
+            min_left_seen  = min(min_left_seen, distance_left)
+            min_right_seen = min(min_right_seen, distance_right)
             continue
 
     if not success:
