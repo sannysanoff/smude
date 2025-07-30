@@ -792,8 +792,8 @@ def mrcdi(input_img: np.ndarray, barlines_img: np.ndarray, upper_img: np.ndarray
     if verbose:
         top_knots = top[0].get_knots()
         bottom_knots = bottom[0].get_knots()
-        logging.info(f'Top staff line: x_range=({top_knots[0]:.2f}, {top_knots[-1]:.2f}), boundaries=({top[1]:.2f}, {top[2]:.2f})')
-        logging.info(f'Bottom staff line: x_range=({bottom_knots[0]:.2f}, {bottom_knots[-1]:.2f}), boundaries=({bottom[1]:.2f}, {bottom[2]:.2f})')
+        logging.info(f'Top staff line: x_range=({top_knots[0]:.2f}, {top_knots[-1]:.2f}) (width axis), boundaries=({top[1]:.2f}, {top[2]:.2f})')
+        logging.info(f'Bottom staff line: x_range=({bottom_knots[0]:.2f}, {bottom_knots[-1]:.2f}) (width axis), boundaries=({bottom[1]:.2f}, {bottom[2]:.2f})')
 
 
     # logging.info('Estimating focal length')
@@ -822,8 +822,8 @@ def mrcdi(input_img: np.ndarray, barlines_img: np.ndarray, upper_img: np.ndarray
     bottom_parametric = to_parametric_spline(bottom[0], bottom_x_start, bottom_x_end)
 
     if verbose:
-        logging.info(f'Top parametric spline bounds: ({top_x_start:.2f}, {top_x_end:.2f})')
-        logging.info(f'Bottom parametric spline bounds: ({bottom_x_start:.2f}, {bottom_x_end:.2f})')
+        logging.info(f'Top parametric spline bounds: ({top_x_start:.2f}, {top_x_end:.2f}) (x-axis/width)')
+        logging.info(f'Bottom parametric spline bounds: ({bottom_x_start:.2f}, {bottom_x_end:.2f}) (x-axis/width)')
 
     get_latitude_parametric = lambda mu, v_x=v_x, v_y=v_y, top=top, bottom=bottom: _get_latitude_parmetric(v_x, v_y, top_parametric, bottom_parametric, mu)
     get_latitude = lambda mu, v_x=v_x, v_y=v_y, top=top, bottom=bottom: _get_latitude(v_x, v_y, top_parametric, bottom_parametric, mu)
