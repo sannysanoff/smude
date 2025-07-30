@@ -227,6 +227,32 @@ class Smude():
         if self.verbose:
             self._save_verbose_image(enhanced, 'enhanced_local_contrast')
 
+        logging.info('Flood filling edge black pixels...')
+        # Create mask for flood fill (2 pixels larger than image)
+        mask = np.zeros((enhanced.shape[0] + 2, enhanced.shape[1] + 2), np.uint8)
+        
+        # Fill border of mask with 255 to allow flood fill from edges
+        mask[0, :] = 255
+        mask[-1, :] = 255
+        mask[:, 0] = 255
+        mask[:, -1] = 255
+        
+        # Flood fill all black pixels connected to edges
+        for y in range(enhanced.shape[0]):
+            for x in [0, enhanced.shape[1]-1]:
+                if enhanced[y, x].sum() == 0:  # If pixel is black
+                    cv.floodFill(enhanced, mask, (x, y), (255, 255, 255), 
+                                flags=cv.FLOODFILL_FIXED_RANGE)
+        
+        for x in range(enhanced.shape[1]):
+            for y in [0, enhanced.shape[0]-1]:
+                if enhanced[y, x].sum() == 0:  # If pixel is black
+                    cv.floodFill(enhanced, mask, (x, y), (255, 255, 255), 
+                                flags=cv.FLOODFILL_FIXED_RANGE)
+        
+        if self.verbose:
+            self._save_verbose_image(enhanced, 'after_flood_fill')
+
         logging.info('Binarizing...')
         # Binarize ROI
         binarized = binarize(enhanced, noise_reduction=self.noise_reduction)
