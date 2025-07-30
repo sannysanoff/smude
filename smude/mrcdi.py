@@ -238,6 +238,7 @@ def get_top_bottom_stafflines(stafflines: List[UnivariateSpline], left: Callable
             f"left_dist={distance_left:.2f} (max={max_dist})  "
             f"right_dist={distance_right:.2f} (max={max_dist})"
         )
+        
         if distance_left <= max_dist and distance_right <= max_dist:
             logging.info(f"  -> ACCEPTED: Both distances within threshold")
         else:
@@ -254,7 +255,6 @@ def get_top_bottom_stafflines(stafflines: List[UnivariateSpline], left: Callable
         elif success:
             bottom = (spline, left_x, right_x)
             break
-            continue
 
         bottom = (spline, left_x, right_x)
         success = True
