@@ -114,7 +114,7 @@ logger = get_logger()
 
 
 class Smude():
-    def __init__(self, use_gpu: bool = False, binarize_output: bool = True, verbose: bool = False, noise_reduction: dict = None, max_dist: float = 40.0, threshold: int = 128, sauvola_k: float = 0.25, skip_border_removal: bool = False):
+    def __init__(self, use_gpu: bool = False, binarize_output: bool = True, verbose: bool = False, noise_reduction: dict = None, max_dist: float = 40.0, threshold: int = 128, sauvola_k: float = 0.25, skip_border_removal: bool = False, grow: int = 0):
         """
         Instantiate new Smude object for sheet music dewarping.
 
@@ -145,6 +145,7 @@ class Smude():
         self.max_dist = max_dist
         self.sauvola_k = sauvola_k
         self.skip_border_removal = skip_border_removal
+        self.grow = grow
 
         # Load Deep Learning model
         dirname = os.path.dirname(__file__)
@@ -445,6 +446,7 @@ def main():
     parser.add_argument('--threshold', type=int, default=128, help='Threshold value for binarization (default: 128)')
     parser.add_argument('--sauvola-k', type=float, default=0.25, help='Sauvola algorithm k parameter for niBlackThreshold (default: 0.25)')
     parser.add_argument('--skip-border-removal', help='Skip border removal using flood fill', action='store_true')
+    parser.add_argument('--grow', type=int, default=0, help='Grow black pixels by n pixels in manhattan distance to remove tiny white dots (default: 0)')
 
     args = parser.parse_args()
 
@@ -460,7 +462,7 @@ def main():
             print("Error: Invalid noise reduction format. Use key=value pairs separated by commas.")
             exit(1)
 
-    smude = Smude(use_gpu=args.use_gpu, binarize_output=args.no_binarization, verbose=args.verbose, noise_reduction=noise_reduction, max_dist=args.max_dist, threshold=args.threshold, sauvola_k=args.sauvola_k, skip_border_removal=args.skip_border_removal)
+    smude = Smude(use_gpu=args.use_gpu, binarize_output=args.no_binarization, verbose=args.verbose, noise_reduction=noise_reduction, max_dist=args.max_dist, threshold=args.threshold, sauvola_k=args.sauvola_k, skip_border_removal=args.skip_border_removal, grow=args.grow)
 
     image = imread(args.infile)
     result = smude.process(image)
