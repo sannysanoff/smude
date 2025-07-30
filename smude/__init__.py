@@ -226,22 +226,31 @@ class Smude():
         if self.verbose:
             self._save_verbose_image(image, 'input')
 
-        logging.info('Extracting ROI...')
-        roi_mask, mask_ratio = extract_roi_mask(image, min_hull_ratio=self.roi_threshold, verbose=self.verbose)
+        # Extract ROI only if roi_threshold > 0
+        if self.roi_threshold > 0:
+            logging.info('Extracting ROI...')
+            roi_mask, mask_ratio = extract_roi_mask(image, min_hull_ratio=self.roi_threshold, verbose=self.verbose)
 
-        if self.verbose:
-            self._save_verbose_image(roi_mask * 255, 'roi_mask')
+            if self.verbose:
+                self._save_verbose_image(roi_mask * 255, 'roi_mask')
 
-        # Repeat mask for each RGB channel
-        mask_3c = np.broadcast_to(roi_mask[..., None], roi_mask.shape + (3,))
-        # Shift non-masked pixels to 2..255 so 0 remains reserved for the mask
-        result = image.astype(np.float32)
-        result = (result / 255.0) * 253 + 2          # scale 0..255 → 2..255
-        result = result * mask_3c                    # masked pixels stay 0
-        result = result.astype(np.uint8)
+            # Repeat mask for each RGB channel
+            mask_3c = np.broadcast_to(roi_mask[..., None], roi_mask.shape + (3,))
+            # Shift non-masked pixels to 2..255 so 0 remains reserved for the mask
+            result = image.astype(np.float32)
+            result = (result / 255.0) * 253 + 2          # scale 0..255 → 2..255
+            result = result * mask_3c                    # masked pixels stay 0
+            result = result.astype(np.uint8)
 
-        if self.verbose:
-            self._save_verbose_image(result, 'masked_roi')
+            if self.verbose:
+                self._save_verbose_image(result, 'masked_roi')
+        else:
+            logging.info('Skipping ROI extraction (roi_threshold=0)')
+            # Use the full image without masking
+            result = image.copy()
+            
+            if self.verbose:
+                self._save_verbose_image(result, 'full_image_no_roi')
 
         if self.verbose:
             self._save_verbose_image(result, 'before_enhance')
