@@ -283,6 +283,25 @@ class Smude():
             grayscale_np = (grayscale.numpy().transpose([1, 2, 0]) * 255).astype(np.uint8)
             self._save_verbose_image(grayscale_np, 'preprocessed_for_unet')
 
+        if self.grow > 0:
+            logging.info(f'Growing black pixels by {self.grow} pixels...')
+            # Create a copy to work with
+            grown = grayscale_np.copy()
+            # Find all non-white pixels
+            black_pixels = np.where(grayscale_np < 255)
+            # For each black pixel, grow in manhattan distance
+            for y, x in zip(black_pixels[0], black_pixels[1]):
+                # Create a diamond-shaped kernel for manhattan distance
+                for dy in range(-self.grow, self.grow + 1):
+                    for dx in range(-self.grow, self.grow + 1):
+                        if abs(dx) + abs(dy) <= self.grow:  # Manhattan distance
+                            ny, nx = y + dy, x + dx
+                            if 0 <= ny < grayscale_np.shape[0] and 0 <= nx < grayscale_np.shape[1]:
+                                grown[ny, nx] = 0
+            grayscale_np = grown
+            if self.verbose:
+                self._save_verbose_image(grayscale_np, 'grown_black_pixels')
+
         logging.info('Extracting features...')
 
         # Move to GPU
