@@ -7,7 +7,7 @@ from skimage.morphology import remove_small_holes
 from skimage.segmentation import flood_fill
 
 #@profile
-def binarize(image: np.ndarray, holes_threshold: float = 20, noise_reduction: dict = None, verbose: bool = False) -> np.ndarray:
+def binarize(image: np.ndarray, holes_threshold: float = 20, noise_reduction: dict = None, verbose: bool = False, threshold: int = 128) -> np.ndarray:
     """
     Binarize image using Sauvola algorithm.
 
@@ -33,6 +33,7 @@ def binarize(image: np.ndarray, holes_threshold: float = 20, noise_reduction: di
     """
 
     logging.info('Starting binarization process')
+    logging.info(f'Using threshold: {threshold}')
     # Extract brightness channel from HSV-converted image
     image_gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
@@ -42,7 +43,7 @@ def binarize(image: np.ndarray, holes_threshold: float = 20, noise_reduction: di
 
     # Threshold using Sauvola algorithm
     logging.info('Applying Sauvola threshold')
-    binary_sauvola = cv2.ximgproc.niBlackThreshold(image_eq, 255, k=0.25, blockSize=51, type=cv2.THRESH_BINARY, binarizationMethod=cv2.ximgproc.BINARIZATION_SAUVOLA)
+    binary_sauvola = cv2.ximgproc.niBlackThreshold(image_eq, 255, k=0.25, blockSize=51, type=cv2.THRESH_BINARY, binarizationMethod=cv2.ximgproc.BINARIZATION_SAUVOLA, thresh=threshold)
     
     # Save intermediate image after Sauvola threshold
     if verbose:
