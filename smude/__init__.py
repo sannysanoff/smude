@@ -461,7 +461,7 @@ def main():
     parser.add_argument('--sauvola-k', type=float, default=0.25, help='Sauvola algorithm k parameter for niBlackThreshold (default: 0.25)')
     parser.add_argument('--skip-border-removal', help='Skip border removal using flood fill', action='store_true')
     parser.add_argument('--grow', type=int, default=0, help='Grow black pixels by n pixels in manhattan distance to remove tiny white dots (default: 0)')
-    parser.add_argument('--spline-threshold', type=int, default=80, help='Keep most smooth splines (1-99%, default: 80)')
+    parser.add_argument('--spline-threshold', type=int, default=80, help='Keep most smooth splines (1-99%%, default: 80)')
 
     args = parser.parse_args()
 
