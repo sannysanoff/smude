@@ -77,7 +77,7 @@ def get_outer_barlines(barline_img: np.ndarray, verbose: bool = False) -> Tuple[
     return left, right
 
 
-def get_stafflines(upper_img: np.ndarray, lower_img: np.ndarray, step_size: int, spline_threshold: int = 80) -> List[UnivariateSpline]:
+def get_stafflines(upper_img: np.ndarray, lower_img: np.ndarray, step_size: int, spline_threshold: int = 80, verbose: bool = False) -> List[UnivariateSpline]:
     """
     Return the top and bottom stafflines from images and return the as
     cubic splines.
@@ -721,7 +721,7 @@ def mrcdi(input_img: np.ndarray, barlines_img: np.ndarray, upper_img: np.ndarray
 
     logging.info('Getting top and bottom stafflines')
     step_size = w//num_longitudes
-    stafflines = get_stafflines(upper_img, lower_img, step_size, spline_threshold)
+    stafflines = get_stafflines(upper_img, lower_img, step_size, spline_threshold, verbose)
 
     if verbose:
         logging.info(f'Staff line detection step size: {step_size}')
