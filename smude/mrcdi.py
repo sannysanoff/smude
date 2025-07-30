@@ -526,6 +526,10 @@ def get_longitudes(v_x: float, v_y: float, f: float, C: Derivable, num: int) -> 
     # Sample values and approximate new spline
     # (faster in the long run but slightly less accurate)
     x_sampled, y_sampled = np.array([D(t) for t in np.linspace(0, 1, 50)]).transpose()
+    # Sort x_sampled and y_sampled together to ensure x values are increasing
+    sort_indices = np.argsort(x_sampled)
+    x_sampled = x_sampled[sort_indices]
+    y_sampled = y_sampled[sort_indices]
     D = UnivariateSpline(x_sampled, y_sampled, k=3, s=1)
     D_parametric = to_parametric_spline(D)
     t_sample_points = sample_spline_arc(D_parametric, num)
