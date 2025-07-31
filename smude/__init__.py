@@ -506,6 +506,7 @@ def main():
     parser.add_argument('--spline-threshold', type=int, default=80, help='Keep most smooth splines (1-99%%, default: 80)')
     parser.add_argument('--pad', type=int, default=0, help='Pad input image with n pixels of white space (default: 0)')
     parser.add_argument('--roi-threshold', type=float, default=0.4, help='Minimum ratio for ROI detection. Lower values allow smaller ROIs (default: 0.4)')
+    parser.add_argument('-g', '--graphics', action='store_true', help='Run interactive TUI with kitty graphics (imgcat)')
 
     args = parser.parse_args()
 
@@ -520,6 +521,25 @@ def main():
         except ValueError:
             print("Error: Invalid noise reduction format. Use key=value pairs separated by commas.")
             exit(1)
+
+    if args.graphics:
+        from .tui import SmudeTUI
+        params = {
+            'use_gpu': args.use_gpu,
+            'binarize_output': args.no_binarization,
+            'noise_reduction': noise_reduction,
+            'max_dist': args.max_dist,
+            'threshold': args.threshold,
+            'sauvola_k': args.sauvola_k,
+            'skip_border_removal': args.skip_border_removal,
+            'grow': args.grow,
+            'spline_threshold': args.spline_threshold,
+            'pad': args.pad,
+            'roi_threshold': args.roi_threshold,
+        }
+        app = SmudeTUI(args.infile, params)
+        app.loop()
+        return
 
     smude = Smude(use_gpu=args.use_gpu, binarize_output=args.no_binarization, verbose=args.verbose, noise_reduction=noise_reduction, max_dist=args.max_dist, threshold=args.threshold, sauvola_k=args.sauvola_k, skip_border_removal=args.skip_border_removal, grow=args.grow, spline_threshold=args.spline_threshold, pad=args.pad, roi_threshold=args.roi_threshold)
 
